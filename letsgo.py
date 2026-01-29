@@ -27,6 +27,14 @@ def _menu() -> str:
     return _ask("输入序号：")
 
 
+def _pause() -> None:
+    print("\n按回车返回菜单...", end="")
+    try:
+        input()
+    except EOFError:
+        return
+
+
 def _init_llm_config(repo_root: Path, *, config_out: str | None) -> int:
     src = repo_root / "llm.yaml.example"
     interactive = bool(getattr(sys.stdin, "isatty", lambda: False)())
@@ -164,18 +172,27 @@ def main(argv: list[str] | None = None) -> int:
     while True:
         choice = _menu()
         if choice == "1":
-            return _init_llm_config(repo_root, config_out=None)
+            _init_llm_config(repo_root, config_out=None)
+            _pause()
+            continue
         if choice == "2":
-            return _health_check(repo_root, config_path=None)
+            _health_check(repo_root, config_path=None)
+            _pause()
+            continue
         if choice == "3":
-            return _clean(repo_root)
+            _clean(repo_root)
+            _pause()
+            continue
         if choice == "4":
-            return _check_deps()
+            _check_deps()
+            _pause()
+            continue
         if choice == "5":
             python = sys.executable
             subprocess.check_call([python, "-m", "pip", "install", "-e", str(repo_root), "--no-deps"])
             print("完成：已以可编辑模式安装本仓库（未安装任何 LLM 依赖）。")
-            return 0
+            _pause()
+            continue
         if choice == "0":
             print("已退出。")
             return 0
