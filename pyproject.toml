@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "reqx"
+version = "0.0.1"
+description = "ReqX: LLM-based requirement excavation and spec generator"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = ["crewai", "langchain-openai", "PyYAML"]
+
+[project.scripts]
+requirements-excavate = "agents.cli:main"
+reqx = "agents.cli:main"
+
+[project.optional-dependencies]
+anthropic = ["langchain-anthropic", "anthropic"]
+google = ["langchain-google-genai", "google-generativeai"]
+dotenv = ["python-dotenv"]
+dev = ["ruff", "mypy", "types-PyYAML"]
+
+[tool.setuptools]
+packages = ["agents"]
