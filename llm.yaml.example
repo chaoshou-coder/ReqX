@@ -4,5 +4,4 @@ temperature: 0
 max_tokens: 1024
 input_char_limit: 8000
 output_char_limit: 20000
-api_key_env: OPENAI_API_KEY
 env_file: .env
