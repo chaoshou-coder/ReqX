@@ -147,6 +147,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p.add_argument("--config", default=None, help="配置文件路径（用于 --check-api；交互模式可省略）")
     p.add_argument("--clean", action="store_true", help="清理项目缓存与构建产物")
     p.add_argument("--check-deps", action="store_true", help="检查依赖是否已安装")
+    p.add_argument("--once", action="store_true", help="执行完指定动作后退出（默认：在交互终端返回菜单）")
     return p
 
 
@@ -156,19 +157,51 @@ def main(argv: list[str] | None = None) -> int:
     if not (repo_root / "pyproject.toml").exists():
         raise RuntimeError("请在仓库根目录运行 letsgo.py")
 
+    interactive = bool(getattr(sys.stdin, "isatty", lambda: False)())
+    actions = [
+        ("--init-config", bool(args.init_config)),
+        ("--check-api", bool(args.check_api)),
+        ("--clean", bool(args.clean)),
+        ("--check-deps", bool(args.check_deps)),
+        ("--install", bool(args.install)),
+    ]
+    if sum(1 for _, enabled in actions if enabled) > 1:
+        enabled_flags = [name for name, enabled in actions if enabled]
+        raise RuntimeError("一次只能执行一个动作参数：" + ", ".join(enabled_flags))
+
+    did_action = False
     if args.init_config:
-        return _init_llm_config(repo_root, config_out=args.config_out)
+        did_action = True
+        code = _init_llm_config(repo_root, config_out=args.config_out)
+        if (not interactive) or args.once:
+            return code
+        _pause()
     if args.check_api:
-        return _health_check(repo_root, config_path=args.config)
+        did_action = True
+        code = _health_check(repo_root, config_path=args.config)
+        if (not interactive) or args.once:
+            return code
+        _pause()
     if args.clean:
-        return _clean(repo_root)
+        did_action = True
+        code = _clean(repo_root)
+        if (not interactive) or args.once:
+            return code
+        _pause()
     if args.check_deps:
-        return _check_deps()
+        did_action = True
+        code = _check_deps()
+        if (not interactive) or args.once:
+            return code
+        _pause()
     if args.install:
+        did_action = True
         python = sys.executable
         subprocess.check_call([python, "-m", "pip", "install", "-e", str(repo_root), "--no-deps"])
         print("完成：已以可编辑模式安装本仓库（未安装任何 LLM 依赖）。")
-        return 0
+        if (not interactive) or args.once:
+            return 0
+        _pause()
     while True:
         choice = _menu()
         if choice == "1":
