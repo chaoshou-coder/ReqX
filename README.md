@@ -64,7 +64,7 @@ git clone <repository_url>
 cd reqx
 
 # 安装依赖并以“可编辑模式”安装本项目
-python letsgo.py --install
+python letsgo.py
 ```
 
 ### 2. 配置
