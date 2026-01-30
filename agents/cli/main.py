@@ -177,7 +177,7 @@ def main(argv: list[str] | None = None) -> int:
             from ..web.server import serve_webui
 
             url = f"http://{args.web_bind}:{int(args.web_port)}/"
-            sys.stderr.write(f"WebUI listening on {url} (Ctrl+C to stop)\n")
+            sys.stderr.write(f"WebUI listening on {url} (使用完成后需按ctrl+c打断)\n")
             if _is_interactive_terminal():
                 _open_browser_later(url)
             serve_webui(repo_root=_repo_root(), bind=str(args.web_bind), port=int(args.web_port), dry_run=bool(args.dry_run))

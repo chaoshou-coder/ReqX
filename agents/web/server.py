@@ -33,38 +33,46 @@ _INDEX_HTML = """<!doctype html>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
     <title>ReqX Studio</title>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <style>
       :root {
-        --bg-body: #f5f5f7;
-        --bg-sidebar: #ffffff;
-        --bg-card: #ffffff;
-        --text-primary: #1d1d1f;
-        --text-secondary: #86868b;
-        --accent-color: #0071e3;
-        --accent-hover: #0077ed;
-        --border-color: #d2d2d7;
-        --input-bg: #e8e8ed;
-        --radius-l: 20px;
-        --radius-m: 14px;
-        --radius-s: 8px;
-        --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
-        --shadow-md: 0 4px 16px rgba(0,0,0,0.06);
-        --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
-        --font-mono: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+        /* Gemini Light Theme */
+        --bg-body: #ffffff;
+        --bg-sidebar: #f0f4f9;
+        --bg-input: #f0f4f9;
+        --text-primary: #1f1f1f;
+        --text-secondary: #444746;
+        --accent-color: #0b57d0; /* Google Blue */
+        --accent-hover: #0842a0;
+        --surface-hover: #e3e3e3;
+        --border-color: #e0e3e7;
+        --user-msg-bg: #f0f4f9;
+        --user-msg-text: #1f1f1f;
+        --bot-msg-bg: transparent;
+        --code-bg: #f0f4f9;
+        --shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+        --font-sans: 'Google Sans', 'Roboto', -apple-system, sans-serif;
+        --font-mono: 'Roboto Mono', monospace;
+        --radius-pill: 999px;
+        --radius-card: 16px;
       }
       @media (prefers-color-scheme: dark) {
         :root {
-          --bg-body: #000000;
-          --bg-sidebar: #1c1c1e;
-          --bg-card: #1c1c1e;
-          --text-primary: #f5f5f7;
-          --text-secondary: #98989d;
-          --accent-color: #0a84ff;
-          --accent-hover: #0077ed;
-          --border-color: #38383a;
-          --input-bg: #2c2c2e;
-          --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
-          --shadow-md: 0 4px 16px rgba(0,0,0,0.3);
+          /* Gemini Dark Theme */
+          --bg-body: #131314;
+          --bg-sidebar: #1e1f20;
+          --bg-input: #1e1f20;
+          --text-primary: #e3e3e3;
+          --text-secondary: #c4c7c5;
+          --accent-color: #a8c7fa; /* Light Blue */
+          --accent-hover: #d3e3fd;
+          --surface-hover: #2d2e31;
+          --border-color: #444746;
+          --user-msg-bg: #2d2e31; /* Dark Grey Pill */
+          --user-msg-text: #e3e3e3;
+          --bot-msg-bg: transparent;
+          --code-bg: #1e1f20;
+          --shadow: 0 4px 8px rgba(0,0,0,0.3);
         }
       }
 
@@ -73,291 +81,375 @@ _INDEX_HTML = """<!doctype html>
         margin: 0;
         background: var(--bg-body);
         color: var(--text-primary);
-        line-height: 1.5;
+        line-height: 1.6;
         height: 100vh;
         overflow: hidden;
-        -webkit-font-smoothing: antialiased;
+        display: flex;
       }
 
-      /* Layout */
-      .wrap { display: grid; grid-template-columns: 320px 1fr; height: 100%; }
-      .side {
+      /* Sidebar */
+      .sidebar {
+        width: 280px;
         background: var(--bg-sidebar);
-        border-right: 1px solid var(--border-color);
-        padding: 24px;
         display: flex;
         flex-direction: column;
-        gap: 24px;
-        overflow-y: auto;
-        backdrop-filter: blur(20px);
+        padding: 20px 16px;
+        gap: 8px;
+        transition: transform 0.3s ease;
+        z-index: 100;
       }
-      .main {
-        padding: 40px;
-        overflow-y: auto;
+      .sidebar-header {
+        padding: 0 12px 16px;
+        font-size: 22px;
+        font-weight: 500;
+        color: var(--text-primary);
         display: flex;
-        flex-direction: column;
         align-items: center;
+        gap: 8px;
       }
-      .content-width {
-        width: 100%;
-        max-width: 800px;
+      .nav-item {
+        padding: 12px 16px;
+        border-radius: var(--radius-pill);
+        cursor: pointer;
+        color: var(--text-primary);
+        font-weight: 500;
+        font-size: 14px;
         display: flex;
-        flex-direction: column;
-        gap: 24px;
+        align-items: center;
+        gap: 12px;
+        transition: background 0.2s;
+        border: none;
+        background: transparent;
+        text-align: left;
+      }
+      .nav-item:hover { background: var(--surface-hover); }
+      .nav-item.active { background: #004a77; color: #d3e3fd; }
+      @media (prefers-color-scheme: light) {
+        .nav-item.active { background: #d3e3fd; color: #041e49; }
       }
 
-      /* Typography */
-      h1, h2, h3 { margin: 0 0 10px; font-weight: 600; color: var(--text-primary); }
+      /* Main Area */
+      .main {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+        background: var(--bg-body);
+        border-top-left-radius: 20px; /* Gemini curve */
+        border-bottom-left-radius: 20px;
+        margin-left: 0;
+        overflow: hidden;
+      }
+      /* In mobile/responsive, sidebar might behave differently, but keep simple for now */
+
+      /* Config/Panels */
+      .panel {
+        flex: 1;
+        overflow-y: auto;
+        padding: 40px;
+        display: none;
+        max-width: 800px;
+        margin: 0 auto;
+        width: 100%;
+        box-sizing: border-box;
+      }
+      .panel.active { display: flex; flex-direction: column; gap: 24px; animation: fadeIn 0.3s; }
+
+      /* Form Elements */
       label {
-        display: block;
-        font-size: 11px;
-        font-weight: 600;
+        font-size: 12px;
+        font-weight: 500;
         color: var(--text-secondary);
         margin-bottom: 8px;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
+        display: block;
       }
-
-      /* Components */
       input, textarea, select {
         width: 100%;
         box-sizing: border-box;
-        padding: 12px 16px;
-        border-radius: var(--radius-m);
-        border: none;
-        background: var(--input-bg);
+        padding: 14px 16px;
+        border-radius: 8px;
+        border: 1px solid var(--border-color);
+        background: transparent;
         color: var(--text-primary);
-        font-size: 14px;
         font-family: inherit;
+        font-size: 14px;
         outline: none;
-        transition: box-shadow 0.2s;
       }
       input:focus, textarea:focus {
-        box-shadow: 0 0 0 2px var(--accent-color);
+        border-color: var(--accent-color);
+        box-shadow: 0 0 0 1px var(--accent-color);
       }
-      textarea {
-        min-height: 120px;
-        resize: vertical;
-        font-family: var(--font-mono);
-        line-height: 1.6;
-      }
-
-      button {
+      button.btn {
+        padding: 10px 24px;
+        border-radius: var(--radius-pill);
         border: none;
-        background: var(--input-bg);
-        color: var(--text-primary);
-        padding: 10px 18px;
-        border-radius: 99px;
-        font-size: 13px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.2s;
-      }
-      button:hover { filter: brightness(0.95); transform: translateY(-1px); }
-      button:active { transform: scale(0.98); }
-      
-      button.primary {
-        background: var(--accent-color);
-        color: #fff;
-      }
-      button.primary:hover { background: var(--accent-hover); }
-
-      /* Tabs (Segmented Control) */
-      .tabs {
-        display: flex;
-        background: var(--input-bg);
-        padding: 3px;
-        border-radius: 12px;
-      }
-      .tab {
-        flex: 1;
-        text-align: center;
-        padding: 6px;
-        border-radius: 9px;
         background: transparent;
-        color: var(--text-secondary);
-        font-size: 12px;
+        color: var(--accent-color);
         font-weight: 500;
-        box-shadow: none;
+        cursor: pointer;
+        transition: background 0.2s;
       }
-      .tab[aria-selected="true"] {
-        background: var(--bg-card);
-        color: var(--text-primary);
-        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+      button.btn:hover { background: rgba(11, 87, 208, 0.1); }
+      button.btn-primary {
+        background: var(--accent-color);
+        color: var(--bg-body);
       }
-
-      /* Panels */
-      section { display: flex; flex-direction: column; gap: 16px; }
-      .row { display: flex; flex-direction: column; }
-      .btnrow { display: flex; gap: 10px; }
-      .btnrow button { flex: 1; }
-
-      /* Card */
-      .card {
-        background: var(--bg-card);
-        border-radius: var(--radius-l);
-        padding: 24px;
-        box-shadow: var(--shadow-md);
+      button.btn-primary:hover {
+        opacity: 0.9;
+        background: var(--accent-color); /* Override transparent hover */
+        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
       }
-
-      /* Chat */
-      .chat-container {
+      
+      /* Chat Area */
+      .chat-view {
+        flex: 1;
         display: flex;
         flex-direction: column;
-        gap: 24px;
-        padding-bottom: 40px;
-        width: 100%;
+        height: 100%;
       }
+      .chat-history {
+        flex: 1;
+        overflow-y: auto;
+        padding: 40px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 32px;
+        scroll-behavior: smooth;
+      }
+      .chat-content-width {
+        width: 100%;
+        max-width: 800px;
+        margin: 0 auto;
+      }
+      
       .msg {
         display: flex;
-        flex-direction: column;
-        gap: 4px;
-        max-width: 85%;
-        animation: fadeIn 0.3s ease;
-      }
-      @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-      
-      .msg[data-role="user"] { align-self: flex-end; align-items: flex-end; }
-      .msg[data-role="assistant"] { align-self: flex-start; align-items: flex-start; }
-
-      .msg-meta { font-size: 11px; color: var(--text-secondary); margin: 0 8px; }
-      
-      .msg-body {
-        padding: 14px 20px;
-        border-radius: 20px;
-        font-size: 15px;
+        gap: 16px;
         line-height: 1.6;
-        box-shadow: var(--shadow-sm);
-        word-wrap: break-word;
+        opacity: 0;
+        animation: slideUp 0.3s forwards;
       }
-      .msg[data-role="user"] .msg-body {
+      @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+      .msg-avatar {
+        width: 32px;
+        height: 32px;
+        border-radius: 50%;
         background: var(--accent-color);
-        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        color: var(--bg-body);
+        flex-shrink: 0;
+      }
+      .msg[data-role="user"] .msg-avatar { background: var(--text-secondary); }
+      
+      .msg-content {
+        flex: 1;
+        min-width: 0;
+        font-size: 16px;
+      }
+      /* User Message Style */
+      .msg[data-role="user"] {
+        flex-direction: row-reverse;
+      }
+      .msg[data-role="user"] .msg-content {
+        background: var(--user-msg-bg);
+        color: var(--user-msg-text);
+        padding: 12px 20px;
+        border-radius: 20px;
         border-bottom-right-radius: 4px;
+        max-width: 80%;
       }
-      .msg[data-role="assistant"] .msg-body {
-        background: var(--bg-card);
+      /* Bot Message Style */
+      .msg[data-role="assistant"] .msg-content {
+        background: transparent;
+        padding: 0; /* No bubble for bot */
         color: var(--text-primary);
-        border-bottom-left-radius: 4px;
       }
 
-      /* Markdown & Code */
-      .msg-body pre {
-        background: rgba(0,0,0,0.05);
-        padding: 12px;
-        border-radius: 8px;
+      /* Markdown overrides */
+      .msg-content h1, .msg-content h2, .msg-content h3 { font-weight: 500; margin-top: 24px; margin-bottom: 8px; }
+      .msg-content p { margin-bottom: 12px; }
+      .msg-content pre {
+        background: var(--code-bg);
+        padding: 16px;
+        border-radius: 12px;
         overflow-x: auto;
-        margin: 10px 0;
+        border: 1px solid var(--border-color);
       }
-      .msg[data-role="user"] .msg-body pre { background: rgba(255,255,255,0.15); }
-      .msg-body code { font-family: var(--font-mono); font-size: 0.9em; }
-      .msg-body p { margin: 0 0 10px; }
-      .msg-body p:last-child { margin: 0; }
-      .msg-body ul, .msg-body ol { margin: 8px 0; padding-left: 20px; }
+      .msg-content code { font-family: var(--font-mono); font-size: 0.9em; }
 
+      /* Input Area */
+      .input-area {
+        padding: 20px;
+        background: var(--bg-body);
+      }
+      .input-box {
+        max-width: 800px;
+        margin: 0 auto;
+        background: var(--bg-input);
+        border-radius: 28px; /* High radius for pill shape */
+        padding: 8px 16px;
+        display: flex;
+        align-items: flex-end;
+        gap: 12px;
+        transition: background 0.2s;
+      }
+      .input-box:focus-within {
+        background: var(--bg-input); /* Keep same, maybe darker shadow? */
+      }
+      .input-box textarea {
+        background: transparent;
+        border: none;
+        padding: 12px 0;
+        max-height: 200px;
+        resize: none;
+        font-size: 16px;
+        line-height: 1.5;
+        box-shadow: none !important; /* Remove focus ring */
+      }
+      .send-btn {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        border: none;
+        background: transparent;
+        color: var(--text-secondary);
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 4px;
+        transition: all 0.2s;
+      }
+      .send-btn:hover { background: var(--surface-hover); color: var(--text-primary); }
+      .send-btn.active { color: var(--accent-color); }
+      
       /* Status */
-      #status { margin-top: 12px; font-size: 12px; color: var(--text-secondary); text-align: center; min-height: 1.5em; }
-      .danger { color: #ff3b30; }
-      .ok { color: #34c759; }
+      .status-bar {
+        font-size: 12px;
+        color: var(--text-secondary);
+        text-align: center;
+        padding-top: 8px;
+        min-height: 20px;
+      }
 
-      /* Checkbox */
-      .checkbox-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
-      .checkbox-row input { width: auto; margin: 0; }
-      .checkbox-row span { font-size: 13px; color: var(--text-primary); }
+      /* Scrollbar */
+      ::-webkit-scrollbar { width: 8px; height: 8px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
+      ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
     </style>
   </head>
   <body>
-    <div class="wrap">
-      <aside class="side">
-        <div style="padding: 0 4px; margin-bottom: 8px;">
-          <h2 style="font-size:18px; margin:0;">ReqX Studio</h2>
-        </div>
-        <div class="tabs">
-          <button class="tab" id="tab-chat" aria-selected="true">对话</button>
-          <button class="tab" id="tab-knowledge" aria-selected="false">知识库</button>
-          <button class="tab" id="tab-config" aria-selected="false">配置</button>
-          <button class="tab" id="tab-prompt" aria-selected="false">提示词</button>
-        </div>
+    <aside class="sidebar">
+      <div class="sidebar-header">
+        <span style="font-size:24px;">✨</span> ReqX
+      </div>
+      <button class="nav-item active" onclick="app.tab('chat')">
+        <span>💬</span> Chat
+      </button>
+      <button class="nav-item" onclick="app.tab('knowledge')">
+        <span>📚</span> Knowledge
+      </button>
+      <button class="nav-item" onclick="app.tab('config')">
+        <span>⚙️</span> Config
+      </button>
+      <button class="nav-item" onclick="app.tab('prompt')">
+        <span>📝</span> Prompt
+      </button>
+    </aside>
 
-        <section id="panel-chat">
-          <div class="row">
-            <label>鉴权 Token</label>
-            <input id="authToken" type="password" placeholder="未设置 (可选)" />
-          </div>
-          <div class="row">
-            <label>LLM 配置</label>
-            <input id="cfgPath" placeholder="llm.yaml" />
-          </div>
-          <div class="row">
-            <label>知识库路径</label>
-            <input id="knowledgePath" placeholder="project_knowledge.db" />
-          </div>
-          <label class="checkbox-row">
-            <input type="checkbox" id="dryRun" />
-            <span>Dry Run (不落盘)</span>
-          </label>
-          <div class="row">
-            <label>导入上下文</label>
-            <textarea id="importedContext" placeholder="粘贴历史对话或背景材料..." style="height:80px"></textarea>
-          </div>
-          <div class="btnrow">
-            <button id="btnReset">清空对话</button>
-            <button id="btnRefreshKnowledge">刷新知识</button>
-          </div>
-        </section>
-
-        <section id="panel-knowledge" style="display:none">
-          <div class="row">
-            <label>知识库快照 (Read Only)</label>
-            <textarea id="knowledgeSnapshot" readonly style="height:300px; font-family:var(--font-mono); font-size:12px;"></textarea>
-          </div>
-          <button id="btnLoadKnowledge">重新读取</button>
-        </section>
-
-        <section id="panel-config" style="display:none">
-          <div class="row">
-            <label>配置内容 (YAML)</label>
-            <textarea id="cfgContent" style="height:300px"></textarea>
-          </div>
-          <div class="btnrow">
-            <button id="btnLoadCfg">读取</button>
-            <button id="btnSaveCfg" class="primary">保存</button>
-          </div>
-          <hr style="border:0; border-top:1px solid var(--border-color); width:100%; margin:10px 0;">
-          <button id="btnDoctor">运行 Doctor 检查</button>
-          <div class="row">
-            <label>Doctor 报告</label>
-            <textarea id="doctorOut" readonly style="height:120px; font-family:var(--font-mono); font-size:12px;"></textarea>
-          </div>
-        </section>
-
-        <section id="panel-prompt" style="display:none">
-          <div class="row">
-            <label>Global Prompt</label>
-            <textarea id="promptContent" style="height:400px"></textarea>
-          </div>
-          <div class="btnrow">
-            <button id="btnLoadPrompt">读取</button>
-            <button id="btnSavePrompt" class="primary">保存</button>
-          </div>
-        </section>
-      </aside>
-
-      <main class="main">
-        <div class="content-width">
-          <div class="card">
-            <div class="row">
-              <textarea id="userInput" placeholder="输入需求..." style="border:none; background:transparent; padding:0; min-height:60px; font-size:16px; resize:none;" autofocus></textarea>
-            </div>
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; border-top:1px solid rgba(0,0,0,0.05); padding-top:12px;">
-              <div id="status">Ready</div>
-              <button id="btnSend" class="primary" style="padding:8px 24px;">发送</button>
+    <main class="main">
+      <!-- Chat View -->
+      <div id="view-chat" class="chat-view">
+        <div class="chat-history" id="chat-container">
+          <!-- Welcome Message -->
+          <div class="chat-content-width">
+            <div class="msg" data-role="assistant" style="opacity:1; animation:none;">
+              <div class="msg-avatar">✨</div>
+              <div class="msg-content">
+                <h2 style="margin-top:0;">你好, 我是 ReqX</h2>
+                <p>我可以帮助你分析需求、生成代码或管理项目配置。</p>
+              </div>
             </div>
           </div>
-          <div class="chat-container" id="chat"></div>
         </div>
-      </main>
-    </div>
+        
+        <div class="input-area">
+          <div class="input-box">
+             <textarea id="userInput" placeholder="输入指令或问题..." rows="1"></textarea>
+             <button id="btnSend" class="send-btn">
+               <svg height="24" viewBox="0 0 24 24" width="24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/></svg>
+             </button>
+          </div>
+          <div class="status-bar" id="status">Ready</div>
+        </div>
+      </div>
+
+      <!-- Config Panel -->
+      <div id="view-config" class="panel">
+        <h2>Configuration</h2>
+        <div class="row">
+           <label>Authentication Token</label>
+           <input id="authToken" type="password" placeholder="Optional" />
+        </div>
+        <div class="row" style="margin-top:16px;">
+           <label>Config Path (YAML)</label>
+           <input id="cfgPath" placeholder="llm.yaml" />
+        </div>
+        <div class="row" style="margin-top:16px;">
+           <label>Content</label>
+           <textarea id="cfgContent" style="height:300px; font-family:var(--font-mono);"></textarea>
+        </div>
+        <div class="row" style="margin-top:16px; display:flex; gap:12px;">
+           <button class="btn btn-primary" onclick="app.loadCfg()">Load</button>
+           <button class="btn btn-primary" onclick="app.saveCfg()">Save</button>
+           <button class="btn" onclick="app.doctor()">Run Doctor</button>
+        </div>
+        <div class="row" style="margin-top:16px;">
+           <label>Doctor Output</label>
+           <textarea id="doctorOut" readonly style="height:100px; font-family:var(--font-mono); font-size:12px; background:var(--bg-input);"></textarea>
+        </div>
+      </div>
+
+      <!-- Knowledge Panel -->
+      <div id="view-knowledge" class="panel">
+        <h2>Project Knowledge</h2>
+        <div class="row">
+           <label>Database Path</label>
+           <input id="knowledgePath" placeholder="project_knowledge.db" />
+        </div>
+        <div class="row" style="margin-top:16px;">
+           <label>Snapshot (Read Only)</label>
+           <textarea id="knowledgeSnapshot" readonly style="height:400px; font-family:var(--font-mono); font-size:12px; background:var(--bg-input);"></textarea>
+        </div>
+        <div class="row" style="margin-top:16px;">
+           <button class="btn btn-primary" onclick="app.refreshKnowledge()">Refresh</button>
+        </div>
+      </div>
+
+      <!-- Prompt Panel -->
+      <div id="view-prompt" class="panel">
+        <h2>Global Prompt</h2>
+        <div class="row">
+           <textarea id="promptContent" style="height:500px; font-family:var(--font-mono);"></textarea>
+        </div>
+        <div class="row" style="margin-top:16px; display:flex; gap:12px;">
+           <button class="btn btn-primary" onclick="app.loadPrompt()">Load</button>
+           <button class="btn btn-primary" onclick="app.savePrompt()">Save</button>
+        </div>
+      </div>
+      
+      <!-- Hidden controls for logic compatibility -->
+      <div style="display:none;">
+        <input type="checkbox" id="dryRun" />
+        <textarea id="importedContext"></textarea>
+      </div>
+    </main>
+
     <script src="/app.js"></script>
   </body>
 </html>
@@ -366,11 +458,14 @@ _INDEX_HTML = """<!doctype html>
 
 _APP_JS = r"""(() => {
   const $ = (id) => document.getElementById(id);
+  
+  // State
   const state = {
     messages: [],
     knowledgeSnapshot: null,
   };
 
+  // Markdown Renderer (Simplified)
   function renderMarkdown(md) {
     const src = (md ?? "").replace(/\r\n/g, "\n");
     const blocks = [];
@@ -398,196 +493,232 @@ _APP_JS = r"""(() => {
     return text;
   }
 
-  function setStatus(text, ok = true) {
-    const el = $("status");
-    el.textContent = text;
-    el.className = ok ? "ok" : "danger";
-  }
+  // App Logic
+  const app = {
+    setStatus(text, ok = true) {
+      const el = $("status");
+      el.textContent = text;
+      el.style.color = ok ? "var(--text-secondary)" : "#ff4444";
+    },
 
-  function saveLocal() {
-    localStorage.setItem("reqx_authToken", $("authToken").value);
-    localStorage.setItem("reqx_cfgPath", $("cfgPath").value);
-    localStorage.setItem("reqx_knowledgePath", $("knowledgePath").value);
-    localStorage.setItem("reqx_dryRun", $("dryRun").checked ? "1" : "");
-  }
+    tab(name) {
+      document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
+      // Simple heuristic for nav item highlighting
+      const navs = document.querySelectorAll(".nav-item");
+      if(name==='chat') navs[0].classList.add("active");
+      if(name==='knowledge') navs[1].classList.add("active");
+      if(name==='config') navs[2].classList.add("active");
+      if(name==='prompt') navs[3].classList.add("active");
 
-  function loadLocal() {
-    $("authToken").value = localStorage.getItem("reqx_authToken") || "";
-    $("cfgPath").value = localStorage.getItem("reqx_cfgPath") || "llm.yaml";
-    $("knowledgePath").value = localStorage.getItem("reqx_knowledgePath") || "project_knowledge.db";
-    $("dryRun").checked = (localStorage.getItem("reqx_dryRun") || "") === "1";
-  }
+      document.querySelectorAll(".panel, .chat-view").forEach(p => p.style.display = "none");
+      if (name === "chat") {
+        $("view-chat").style.display = "flex";
+      } else {
+        $("view-" + name).style.display = "flex";
+        $("view-" + name).classList.add("active");
+      }
+    },
 
-  function renderChat() {
-    const root = $("chat");
-    root.innerHTML = "";
-    for (const msg of state.messages) {
-      const div = document.createElement("div");
-      div.className = "msg";
-      div.setAttribute("data-role", msg.role);
+    renderChat() {
+      // Clear user generated messages (keep welcome msg if possible, but simpler to rebuild)
+      const container = $("chat-container");
+      // Find the inner content width container
+      let contentDiv = container.querySelector(".chat-content-width");
+      if (!contentDiv) {
+         contentDiv = document.createElement("div");
+         contentDiv.className = "chat-content-width";
+         container.appendChild(contentDiv);
+      }
       
-      const meta = document.createElement("div");
-      meta.className = "msg-meta";
-      meta.textContent = msg.role === "user" ? "You" : "ReqX";
-      div.appendChild(meta);
+      // We will rebuild the chat list for simplicity or append.
+      // To avoid flashing, let's clear and rebuild.
+      contentDiv.innerHTML = "";
       
-      const body = document.createElement("div");
-      body.className = "msg-body";
-      const esc = (s) => (s ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
-      body.innerHTML = msg.role === "assistant" ? renderMarkdown(msg.content) : `<p>${esc(msg.content).replace(/\n/g, "<br>")}</p>`;
-      div.appendChild(body);
+      // Add welcome
+      contentDiv.innerHTML += `
+        <div class="msg" data-role="assistant" style="opacity:1; animation:none;">
+          <div class="msg-avatar">✨</div>
+          <div class="msg-content">
+            <h2 style="margin-top:0;">你好, 我是 ReqX</h2>
+            <p>我可以帮助你分析需求、生成代码或管理项目配置。</p>
+          </div>
+        </div>`;
+
+      for (const msg of state.messages) {
+        const div = document.createElement("div");
+        div.className = "msg";
+        div.setAttribute("data-role", msg.role);
+        
+        const avatar = document.createElement("div");
+        avatar.className = "msg-avatar";
+        avatar.textContent = msg.role === "user" ? "U" : "✨";
+        
+        const content = document.createElement("div");
+        content.className = "msg-content";
+        const esc = (s) => (s ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
+        
+        if (msg.role === "assistant") {
+          content.innerHTML = renderMarkdown(msg.content);
+        } else {
+          content.innerText = msg.content; // text only for user
+        }
+        
+        div.appendChild(avatar);
+        div.appendChild(content);
+        contentDiv.appendChild(div);
+      }
+      // Scroll
+      container.scrollTop = container.scrollHeight;
+    },
+
+    saveLocal() {
+      localStorage.setItem("reqx_authToken", $("authToken").value);
+      localStorage.setItem("reqx_cfgPath", $("cfgPath").value);
+      localStorage.setItem("reqx_knowledgePath", $("knowledgePath").value);
+    },
+
+    loadLocal() {
+      $("authToken").value = localStorage.getItem("reqx_authToken") || "";
+      $("cfgPath").value = localStorage.getItem("reqx_cfgPath") || "llm.yaml";
+      $("knowledgePath").value = localStorage.getItem("reqx_knowledgePath") || "project_knowledge.db";
+    },
+
+    async apiJson(method, path, body) {
+      const token = $("authToken").value.trim();
+      const headers = {"Content-Type": "application/json; charset=utf-8"};
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+      try {
+        const res = await fetch(path, {
+          method, headers, body: body ? JSON.stringify(body) : undefined
+        });
+        return await res.json();
+      } catch (e) {
+        return {ok: false, error: {code: "network_error", message: String(e)}};
+      }
+    },
+
+    async send() {
+      app.saveLocal();
+      const text = $("userInput").value;
+      if (!text.trim()) return;
       
-      root.appendChild(div);
+      // Add user message
+      state.messages.push({role: "user", content: text});
+      $("userInput").value = "";
+      $("userInput").style.height = "auto"; // reset height
+      app.renderChat();
+      app.setStatus("Thinking...");
+
+      const payload = {
+        config_path: $("cfgPath").value.trim() || null,
+        knowledge_path: $("knowledgePath").value.trim() || null,
+        dry_run: $("dryRun").checked,
+        imported_context: $("importedContext").value || "",
+        messages: state.messages,
+      };
+
+      const r = await app.apiJson("POST", "/v1/chat/send", payload);
+      if (!r.ok) {
+        app.setStatus(`Error: ${r.error?.code || "unknown"}`, false);
+        return;
+      }
+      
+      state.messages.push({role: "assistant", content: r.result.reply});
+      app.renderChat();
+      
+      if (r.result.knowledge_appended > 0) {
+        await app.refreshKnowledge();
+        app.setStatus(`Done (Learned ${r.result.knowledge_appended} items)`);
+      } else {
+        app.setStatus("Ready");
+      }
+    },
+
+    async refreshKnowledge() {
+      app.saveLocal();
+      const kp = $("knowledgePath").value.trim();
+      const r = await app.apiJson("POST", "/v1/knowledge/read", {knowledge_path: kp || null});
+      if (r.ok) {
+        $("knowledgeSnapshot").value = JSON.stringify(r.result, null, 2);
+        app.setStatus("Knowledge refreshed");
+      }
+    },
+
+    async loadCfg() {
+      app.saveLocal();
+      const p = $("cfgPath").value.trim();
+      const r = await app.apiJson("POST", "/v1/config/read", {path: p || null});
+      if (r.ok) {
+        $("cfgContent").value = r.result.content || "";
+        app.setStatus("Config loaded");
+      } else {
+        app.setStatus("Load failed", false);
+      }
+    },
+
+    async saveCfg() {
+      app.saveLocal();
+      const r = await app.apiJson("POST", "/v1/config/write", {
+        path: $("cfgPath").value.trim() || null, 
+        content: $("cfgContent").value || "",
+        dry_run: $("dryRun").checked
+      });
+      if (r.ok) app.setStatus("Config saved");
+      else app.setStatus("Save failed", false);
+    },
+
+    async doctor() {
+      app.saveLocal();
+      const r = await app.apiJson("POST", "/v1/config/doctor", {path: $("cfgPath").value.trim() || null});
+      if (r.ok) {
+        $("doctorOut").value = JSON.stringify(r.result, null, 2);
+        app.setStatus("Doctor passed");
+      } else {
+        $("doctorOut").value = "Failed";
+        app.setStatus("Doctor failed", false);
+      }
+    },
+    
+    async loadPrompt() {
+      const r = await app.apiJson("POST", "/v1/prompt/read", {});
+      if (r.ok) {
+         $("promptContent").value = r.result.content || "";
+         app.setStatus("Prompt loaded");
+      }
+    },
+    
+    async savePrompt() {
+      const r = await app.apiJson("POST", "/v1/prompt/write", {content: $("promptContent").value || "", dry_run: false});
+      if (r.ok) app.setStatus("Prompt saved");
+      else app.setStatus("Save failed", false);
     }
-    // Scroll to bottom
-    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
-  }
+  };
 
-  async function apiJson(method, path, body) {
-    const token = $("authToken").value.trim();
-    const headers = {"Content-Type": "application/json; charset=utf-8"};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-    const res = await fetch(path, {
-      method,
-      headers,
-      body: body ? JSON.stringify(body) : undefined,
-    });
-    return await res.json();
-  }
+  // Expose to window for onclick handlers
+  window.app = app;
 
-  async function refreshKnowledge() {
-    saveLocal();
-    const kp = $("knowledgePath").value.trim();
-    const r = await apiJson("POST", "/v1/knowledge/read", {knowledge_path: kp || null});
-    if (!r.ok) {
-      setStatus(`Read Failed: ${r.error?.code || "unknown"}`, false);
-      return;
-    }
-    state.knowledgeSnapshot = r.result;
-    $("knowledgeSnapshot").value = JSON.stringify(r.result, null, 2);
-    setStatus("Knowledge refreshed");
-  }
-
-  async function send() {
-    saveLocal();
-    const text = $("userInput").value;
-    if (!text.trim()) return;
-    $("userInput").value = "";
-    state.messages.push({role: "user", content: text});
-    renderChat();
-    setStatus("Thinking...");
-
-    const payload = {
-      config_path: $("cfgPath").value.trim() || null,
-      knowledge_path: $("knowledgePath").value.trim() || null,
-      dry_run: $("dryRun").checked,
-      imported_context: $("importedContext").value || "",
-      messages: state.messages,
-    };
-    const r = await apiJson("POST", "/v1/chat/send", payload);
-    if (!r.ok) {
-      setStatus(`Error: ${r.error?.code || "unknown"} ${r.error?.message || ""}`.trim(), false);
-      return;
-    }
-    state.messages.push({role: "assistant", content: r.result.reply});
-    renderChat();
-    if (r.result.knowledge_appended > 0) {
-      await refreshKnowledge();
-      setStatus(`Done (Learned ${r.result.knowledge_appended} items)`);
-      return;
-    }
-    setStatus("Ready");
-  }
-
-  async function loadCfg() {
-    saveLocal();
-    const p = $("cfgPath").value.trim();
-    const r = await apiJson("POST", "/v1/config/read", {path: p || null});
-    if (!r.ok) {
-      setStatus(`Load Config Failed: ${r.error?.code || "unknown"}`, false);
-      return;
-    }
-    $("cfgContent").value = r.result.content || "";
-    setStatus("Config loaded");
-  }
-
-  async function saveCfg() {
-    saveLocal();
-    const p = $("cfgPath").value.trim();
-    const r = await apiJson("POST", "/v1/config/write", {path: p || null, content: $("cfgContent").value || "", dry_run: $("dryRun").checked});
-    if (!r.ok) {
-      setStatus(`Save Config Failed: ${r.error?.code || "unknown"}`, false);
-      return;
-    }
-    setStatus(r.result?.dry_run ? "Dry Run: Not saved" : "Config saved");
-  }
-
-  async function doctor() {
-    saveLocal();
-    const p = $("cfgPath").value.trim();
-    const r = await apiJson("POST", "/v1/config/doctor", {path: p || null});
-    if (!r.ok) {
-      setStatus(`Doctor Failed: ${r.error?.code || "unknown"}`, false);
-      $("doctorOut").value = "";
-      return;
-    }
-    $("doctorOut").value = JSON.stringify(r.result, null, 2);
-    setStatus("Doctor passed");
-  }
-
-  async function loadPrompt() {
-    const r = await apiJson("POST", "/v1/prompt/read", {});
-    if (!r.ok) {
-      setStatus(`Load Prompt Failed: ${r.error?.code || "unknown"}`, false);
-      return;
-    }
-    $("promptContent").value = r.result.content || "";
-    setStatus("Prompt loaded");
-  }
-
-  async function savePrompt() {
-    const r = await apiJson("POST", "/v1/prompt/write", {content: $("promptContent").value || "", dry_run: $("dryRun").checked});
-    if (!r.ok) {
-      setStatus(`Save Prompt Failed: ${r.error?.code || "unknown"}`, false);
-      return;
-    }
-    setStatus(r.result?.dry_run ? "Dry Run: Not saved" : "Prompt saved");
-  }
-
-  function tab(name) {
-    const tabs = ["chat","knowledge","config","prompt"];
-    for (const t of tabs) {
-      $(`tab-${t}`).setAttribute("aria-selected", t === name ? "true" : "false");
-      $(`panel-${t}`).style.display = t === name ? "" : "none";
-    }
-  }
-
-  $("btnSend").addEventListener("click", send);
-  $("btnReset").addEventListener("click", () => { state.messages = []; renderChat(); setStatus("Chat cleared"); });
-  $("btnRefreshKnowledge").addEventListener("click", refreshKnowledge);
-  $("btnLoadKnowledge").addEventListener("click", refreshKnowledge);
-  $("btnLoadCfg").addEventListener("click", loadCfg);
-  $("btnSaveCfg").addEventListener("click", saveCfg);
-  $("btnDoctor").addEventListener("click", doctor);
-  $("btnLoadPrompt").addEventListener("click", loadPrompt);
-  $("btnSavePrompt").addEventListener("click", savePrompt);
-
-  $("tab-chat").addEventListener("click", () => tab("chat"));
-  $("tab-knowledge").addEventListener("click", () => tab("knowledge"));
-  $("tab-config").addEventListener("click", () => tab("config"));
-  $("tab-prompt").addEventListener("click", () => tab("prompt"));
-
-  $("userInput").addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+  // Init
+  $("btnSend").addEventListener("click", app.send);
+  
+  // Auto-resize textarea
+  const ta = $("userInput");
+  ta.addEventListener("input", function() {
+    this.style.height = "auto";
+    this.style.height = (this.scrollHeight) + "px";
+    if (this.value === "") this.style.height = "auto";
+  });
+  ta.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
-      send();
+      app.send();
     }
   });
 
-  loadLocal();
-  refreshKnowledge().catch(() => {});
-  loadCfg().catch(() => {});
-  loadPrompt().catch(() => {});
+  app.loadLocal();
+  app.refreshKnowledge().catch(()=>{});
+  app.loadCfg().catch(()=>{});
+  app.loadPrompt().catch(()=>{});
+
 })();"""
 
 
