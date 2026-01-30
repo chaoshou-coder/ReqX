@@ -1,5 +1,13 @@
 # 使用说明书 (User Manual)
 
+## 目录
+
+- [1. 环境准备](#1-环境准备)
+- [2. 配置指南](#2-配置指南)
+- [3. 实战教程：开始需求挖掘](#3-实战教程开始需求挖掘)
+- [4. 高级功能与配置](#4-高级功能与配置)
+- [5. 常见问题（FAQ）](#5-常见问题-faq)
+
 欢迎使用 **ReqX**！本手册将手把手教你如何从零开始配置环境，并利用该工具进行高效的需求分析。
 
 ## 1. 环境准备
@@ -17,23 +25,41 @@
     打开终端（Terminal），进入项目根目录，运行以下命令来安装项目所需的依赖包：
     ```powershell
     # Windows 用户
-    reqx install
+    reqx install --with-deps
     
     # Mac/Linux 用户
-    reqx install
+    reqx install --with-deps
     ```
-    *注：这个命令会以“可编辑模式”安装本项目，同时会自动下载 `crewai`, `langchain`, `httpx` 等必要的第三方库。*
+    *注：`reqx install` 以“可编辑模式”安装本仓库；默认使用 `--no-deps`。如果你希望自动安装依赖，请加 `--with-deps`。*
 
 ## 2. 配置指南
 
 在开始对话之前，你需要告诉程序使用哪个大模型。
 
 ### 2.1 初始化配置文件
-在终端运行：
+本项目支持三种方式完成“初始配置”：
+
+1) **终端命令 + 参数一键配置（适合 CI）**
+
 ```powershell
-reqx init-config
+reqx init-config --config-out llm.yaml
 ```
-这会提示你输入要生成的配置文件路径（也可用 `--config-out` 直接指定），并从 `llm.yaml.example` 复制生成。
+
+2) **终端交互式向导（推荐新手）**
+
+```powershell
+reqx wizard
+```
+
+向导会：生成 `llm.yaml` → 可选写入 `.env` → 可选执行 `check-api` 健康检查。
+
+3) **WebUI 中完成配置（可视化编辑）**
+
+```powershell
+reqx web --config llm.yaml --bind 127.0.0.1 --port 8788
+```
+
+打开浏览器访问 `http://127.0.0.1:8788/`，切换到“配置”页签即可读取/保存 `llm.yaml`。
 
 ### 2.2 编辑 `llm.yaml`
 用你喜欢的文本编辑器打开 `llm.yaml`，根据你的模型服务商进行修改。
@@ -204,7 +230,7 @@ azure_api_key_env: MY_AZURE_KEY # 自定义 Azure Key 的环境变量名
 
 **启动服务**：
 ```bash
-python -m agents.web.server --port 8000
+reqx web --config llm.yaml --bind 127.0.0.1 --port 8000
 ```
 
 **接口调用示例 (Python)**：
@@ -214,8 +240,11 @@ import requests
 url = "http://localhost:8000/v1/chat/send"
 headers = {"Authorization": "Bearer YOUR_TOKEN"} # 如果配置了 REQX_WEB_TOKEN
 data = {
-    "message": "我想做一个商城",
-    "dry_run": False
+    "config_path": "llm.yaml",
+    "knowledge_path": "project_knowledge.db",
+    "imported_context": "",
+    "dry_run": False,
+    "messages": [{"role": "user", "content": "我想做一个商城"}],
 }
 response = requests.post(url, json=data, headers=headers)
 print(response.json())

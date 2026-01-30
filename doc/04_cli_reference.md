@@ -1,5 +1,12 @@
 # 命令与参数参考 (CLI Reference)
 
+## 目录
+
+- [1. 需求挖掘主命令：reqx / requirements-excavate / python -m agents](#1-需求挖掘主命令reqx--requirements-excavate--python--m-agents)
+- [2. 清理脚本：clean_repo.py](#2-清理脚本clean_repopy)
+- [3. Demo 脚本：run_agent.py](#3-demo-脚本run_agentpy)
+- [4. 环境变量（可选）](#4-环境变量可选)
+
 本文档列出本项目**所有可执行命令**、**所有参数**、以及各参数的典型使用场景（交互 / CI）。
 
 ## 1. 需求挖掘主命令：reqx / requirements-excavate / python -m agents
@@ -90,7 +97,33 @@ reqx spec --config llm.yaml --knowledge path/to/project_knowledge.db
 reqx done --config llm.yaml --knowledge path/to/project_knowledge.db --auto-pick-name
 ```
 
-### 1.6 本地知识库编辑 API：reqx knowledge-api / reqx-knowledge-api
+### 1.6 初始配置：init-config / wizard / web
+
+一键生成配置（可脚本化）：
+
+```bash
+reqx init-config --config-out llm.yaml
+```
+
+交互式生成（未提供 `--config-out` 时会提示输入路径；目标文件已存在会提示是否覆盖）：
+
+```bash
+reqx init-config
+```
+
+交互式向导（生成配置 → 可选写入 `.env` → 可选健康检查）：
+
+```bash
+reqx wizard
+```
+
+WebUI 中编辑配置（可视化；同时暴露 `/v1/config/*` 与 `/v1/chat/send` 等接口）：
+
+```bash
+reqx web --config llm.yaml --bind 127.0.0.1 --port 8788
+```
+
+### 1.7 本地知识库编辑 API：reqx knowledge-api / reqx-knowledge-api
 
 用途：为外部 agent 提供一个本机 HTTP 接口，用于追加/读取项目知识库（不做内容抽取与判断，仅负责校验与原子落盘）。
 

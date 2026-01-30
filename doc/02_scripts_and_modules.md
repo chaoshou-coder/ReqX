@@ -1,5 +1,10 @@
 # 各个脚本与模块详解 (Scripts and Modules)
 
+## 目录
+
+- [1. 根目录工具脚本](#1-根目录工具脚本)
+- [2. 核心代码库（agents 目录）](#2-核心代码库-agents-目录)
+
 本文档将深入剖析 **ReqX** 项目中的每一个脚本和核心模块，帮助你理解它们的功能、实现原理以及相互之间的协作关系。
 
 ## 1. 根目录工具脚本
@@ -9,7 +14,7 @@
 ### 1.1 开发者子命令（reqx）
 
 项目的初始化与维护动作已收敛到 `reqx` 子命令：
-- `reqx install`：以可编辑模式安装项目
+- `reqx install --with-deps`：以可编辑模式安装项目并安装依赖（默认 `reqx install` 不装依赖）
 - `reqx init-config`：生成配置文件
 - `reqx check-api --config llm.yaml`：健康检查
 - `reqx clean`：清理缓存与构建产物

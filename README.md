@@ -69,7 +69,12 @@ python -m pip install -e .
 
 ### 2. 配置
 
-初始化配置文件：
+本项目支持三种“初始配置”路径：
+- 终端命令 + 参数一键配置（适合 CI）：`reqx init-config --config-out llm.yaml`
+- 终端交互式向导：`reqx wizard`
+- WebUI 中编辑配置：`reqx web --config llm.yaml` → 浏览器“配置”页签
+
+初始化配置文件（交互式，适合本地首次上手）：
 
 ```bash
 reqx init-config
@@ -80,6 +85,19 @@ reqx init-config
 
 ```env
 OPENAI_API_KEY=YOUR_OPENAI_API_KEY
+```
+
+一键配置（非交互，适合脚本/CI）：
+
+```bash
+reqx init-config --config-out llm.yaml
+reqx check-api --config llm.yaml
+```
+
+交互式向导（生成配置 → 可选写入 env → 可选健康检查）：
+
+```bash
+reqx wizard
 ```
 
 ### 3. 运行
@@ -175,6 +193,7 @@ api_key_env: ANTHROPIC_API_KEY
 *   [**02_脚本与模块详解**](doc/02_scripts_and_modules.md)：深入代码实现细节。
 *   [**03_使用说明书**](doc/03_user_manual.md)：详细的操作手册与 FAQ。
 *   [**04_CLI 参数参考**](doc/04_cli_reference.md)：所有命令、所有参数与 CI/交互使用场景。
+*   [**05_全流程操作案例**](doc/05_end_to_end_workflow.md)：从安装到产出规约的端到端案例。
 
 ---
 
