@@ -13,16 +13,38 @@ reqx --help
 python -m agents --help
 ```
 
-### 1.2 参数一览
+### 1.2 子命令（推荐）
+
+推荐使用子命令形式（更清晰，也更适合脚本化）：
+
+```bash
+reqx chat --help
+reqx show --help
+reqx spec --help
+reqx done --help
+reqx doctor --help
+reqx web --help
+reqx knowledge-api --help
+reqx init-config --help
+reqx check-api --help
+reqx clean --help
+reqx check-deps --help
+reqx install --help
+reqx wizard --help
+```
+
+### 1.3 兼容参数（旧用法仍可用）
 
 | 参数 | 作用 | 典型场景 |
 |:---|:---|:---|
 | `--config PATH` | LLM 配置文件路径（未提供则读取环境变量 `LLM_CONFIG_PATH`） | 本地与 CI 均建议显式指定 |
 | `--doctor` | 输出当前有效配置与告警（不含密钥）并退出 | CI/排障自检 |
-| `--knowledge PATH` | 项目知识文件路径 | 交互：跳过启动询问；CI：必填（spec/done/show） |
+| `--knowledge PATH` | 项目知识文件路径（支持 `.db` 或 `.yaml`） | 交互：跳过启动询问；CI：必填（spec/done/show） |
 | `--transcript PATH` | 本次对话逐字稿文件路径（优先于 `--transcript-dir`） | CI：希望逐字稿落到固定文件名 |
 | `--transcript-dir DIR` | 本次对话逐字稿输出目录（自动生成文件名） | 交互：把逐字稿统一放到某目录 |
+| `--resume-transcript` | 继续使用已有逐字稿文件（默认：新会话并清空旧记录） | 需要在同一逐字稿文件中追加 |
 | `--import-transcript PATH` | 导入已有逐字稿文件作为参考上下文 | 从历史会话继续澄清 |
+| `--dry-run` | 只演练不落盘（不写知识库/逐字稿/配置） | CI 或调试 |
 | `--show` | 输出当前项目知识并退出（等价于 chat 中 `/show`） | CI：快速查看已沉淀内容 |
 | `--spec` | 基于项目知识生成需求 YAML 并退出（等价于 chat 中 `/spec`） | CI：从 knowledge 生成规约 |
 | `--done` | 生成需求 YAML + 项目名并退出（等价于 chat 中 `/done`） | CI：全流程产物落盘（spec + project_name） |
@@ -30,7 +52,7 @@ python -m agents --help
 | `--project-name-index N` | 用于 `--done`：从生成的 10 个名称中选序号（1-10） | CI：固定选第 N 个 |
 | `--auto-pick-name` | 用于 `--done`：自动选择第 1 个生成名称 | CI：无需人工干预 |
 
-### 1.3 交互式 chat（默认行为）
+### 1.4 交互式 chat（默认行为）
 
 ```bash
 reqx --config llm.yaml
@@ -41,13 +63,13 @@ reqx --config llm.yaml
 - `/show`：显示当前项目知识
 - `/spec`：基于项目知识生成需求 YAML（不结束）
 - `/done`：生成需求 YAML → 生成项目名 → 选择后结束流程提示
-- `/reset`：清空**本轮对话记录**（不删除已落盘项目知识）
+- `/reset`：清空**本轮对话记录**并清空落盘逐字稿（不删除已落盘项目知识）
 - `/exit`：退出
 
 典型场景：
 - 个人开发：需要多轮澄清、希望落盘复盘、并在关键节点用 `/spec` 多次迭代。
 
-### 1.4 非交互：show/spec/done（用于 CI）
+### 1.5 非交互：show/spec/done（用于 CI）
 
 前置要求：
 - 必须提供 `--config`（或设置 `LLM_CONFIG_PATH`）
@@ -55,38 +77,59 @@ reqx --config llm.yaml
 
 示例：仅查看项目知识
 ```bash
-reqx --config llm.yaml --knowledge path/to/project_knowledge.yaml --show
+reqx show --config llm.yaml --knowledge path/to/project_knowledge.db
 ```
 
 示例：从项目知识生成规约
 ```bash
-reqx --config llm.yaml --knowledge path/to/project_knowledge.yaml --spec
+reqx spec --config llm.yaml --knowledge path/to/project_knowledge.db
 ```
 
 示例：生成规约 + 自动选择项目名
 ```bash
-reqx --config llm.yaml --knowledge path/to/project_knowledge.yaml --done --auto-pick-name
+reqx done --config llm.yaml --knowledge path/to/project_knowledge.db --auto-pick-name
 ```
+
+### 1.6 本地知识库编辑 API：reqx knowledge-api / reqx-knowledge-api
+
+用途：为外部 agent 提供一个本机 HTTP 接口，用于追加/读取项目知识库（不做内容抽取与判断，仅负责校验与原子落盘）。
+
+```bash
+reqx knowledge-api --knowledge path/to/project_knowledge.db --port 8787
+```
+
+常用参数：
+
+| 参数 | 作用 |
+|:---|:---|
+| `--bind HOST` | 监听地址（默认 `127.0.0.1`） |
+| `--port N` | 监听端口（默认 `8787`） |
+| `--knowledge PATH` | 默认知识库文件路径（请求体可省略 `knowledge_path`） |
+| `--base-dir DIR` | 限制 `knowledge_path` 只能落在该目录下 |
+| `--token-env NAME` | 从环境变量读取 Bearer token（默认 `REQX_KNOWLEDGE_API_TOKEN`） |
+| `--token TEXT` | 直接指定 Bearer token（优先于 env） |
 
 ## 2. 项目管理脚本：letsgo.py
 
 ### 2.1 获取帮助
 
+`letsgo.py` 已合并到 `reqx`，该脚本仅作为兼容转发壳保留。推荐使用：
+
 ```bash
-python letsgo.py --help
+reqx --help
 ```
 
 ### 2.2 参数一览
 
 | 参数 | 作用 | 典型场景 |
 |:---|:---|:---|
-| `--install` | 以可编辑模式安装本仓库（不安装任何 LLM extra） | 本地开发环境初始化 |
-| `--init-config` | 从 `llm.yaml.example` 生成配置文件 | 新项目初始化 |
+| `--install` | 等价于 `reqx install` | 本地开发环境初始化 |
+| `--init-config` | 等价于 `reqx init-config` | 新项目初始化 |
 | `--config-out PATH` | 用于 `--init-config`：指定输出路径 | CI/脚本化生成配置 |
-| `--check-api` | 健康检查：尝试调用模型并输出 YAML 结果 | 网络/Key/模型配置排障 |
+| `--check-api` | 等价于 `reqx check-api` | 网络/Key/模型配置排障 |
 | `--config PATH` | 用于 `--check-api`：指定配置文件路径 | CI/非交互环境必填 |
-| `--clean` | 清理缓存与构建产物（调用 `clean_repo.py`） | 发布/打包前清理 |
-| `--check-deps` | 检查依赖是否已安装 | 新手自检 |
+| `--clean` | 等价于 `reqx clean` | 发布/打包前清理 |
+| `--check-deps` | 等价于 `reqx check-deps` | 新手自检 |
 
 ## 3. 清理脚本：clean_repo.py
 
@@ -133,4 +176,4 @@ python run_agent.py --help
 | `LLM_HTTP_TIMEOUT_S` | HTTP 超时时间（秒） | 网络抖动/企业代理 |
 | `REQX_DEBUG_RAW_OUTPUT` | 开启错误时的模型原始输出脱敏预览 | 仅用于排障（默认关闭） |
 | `RUN_AGENT_MODE` | run_agent 默认运行模式 | 不传 `--mode` 的兼容方式 |
-
+| `REQX_WEB_TOKEN` | WebUI 写入接口的 Bearer token（建议设置） | 防止本机浏览器侧攻击面导致误写 |

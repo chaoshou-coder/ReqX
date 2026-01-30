@@ -5,6 +5,7 @@ import sys
 import threading
 import time
 from contextlib import contextmanager
+import shutil
 
 from crewai import Agent, Crew, LLM, Task
 import httpx
@@ -82,8 +83,25 @@ def _step(title: str, *, heartbeat: str | None = None):
         if stop:
             stop.set()
             if heartbeat_active and bool(getattr(sys.stderr, "isatty", lambda: False)()):
-                sys.stderr.write("\r" + (" " * 120) + "\r")
+                width = int(getattr(shutil.get_terminal_size(fallback=(120, 24)), "columns", 120))
+                sys.stderr.write("\r" + (" " * max(20, width)) + "\r")
                 sys.stderr.flush()
+
+
+def _resolve_max_tokens(cfg_max_tokens: int | None, arg_max_tokens: int | None) -> int:
+    max_tokens = cfg_max_tokens
+    if max_tokens is None or max_tokens > 1024:
+        max_tokens = 1024
+    if isinstance(arg_max_tokens, int) and arg_max_tokens > 0:
+        max_tokens = min(1024, int(arg_max_tokens))
+    return int(max_tokens)
+
+
+def _tool_run(tool: object, surface: str) -> str:
+    runner = getattr(tool, "run", None)
+    if callable(runner):
+        return str(runner(surface))
+    return str(getattr(tool, "_run")(surface))
 
 
 def _build_parser() -> argparse.ArgumentParser:
@@ -123,11 +141,7 @@ def main(argv: list[str] | None = None) -> None:
     )
 
     with _step("初始化 LLM 客户端"):
-        max_tokens = cfg.max_tokens
-        if max_tokens is None or max_tokens > 1024:
-            max_tokens = 1024
-        if isinstance(args.max_tokens, int) and args.max_tokens > 0:
-            max_tokens = min(1024, int(args.max_tokens))
+        max_tokens = _resolve_max_tokens(cfg.max_tokens, args.max_tokens)
         lc_llm = get_llm(config_path=str(resolved_config_path), strict=True, max_tokens=max_tokens)
         tool = RequirementExcavationSkill(llm=lc_llm, config_path=str(resolved_config_path))
 
@@ -182,7 +196,7 @@ def main(argv: list[str] | None = None) -> None:
     mode = (args.mode or os.getenv("RUN_AGENT_MODE") or "direct").strip().lower()
     if mode in {"direct", "tool", "skill"}:
         with _step("生成需求 YAML", heartbeat="正在调用 LLM 生成结果"):
-            print(tool._run(surface), flush=True)
+            print(_tool_run(tool, surface), flush=True)
         return
 
     with _step("构建 CrewAI LLM"):

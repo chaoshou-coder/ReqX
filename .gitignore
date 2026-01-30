@@ -5,6 +5,13 @@ llm.yaml
 llm.*.yaml
 project_knowledge.yaml
 transcripts/
+*.db
+*.sqlite
+*.sqlite3
+.trae/
+.venv/
+.vscode/
+.idea/
 *.broken.*.bak
 __pycache__/
 *.pyc

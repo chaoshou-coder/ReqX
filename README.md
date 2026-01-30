@@ -49,22 +49,21 @@ flowchart TD
 
   CLI --> KS[项目知识存储<br/>KnowledgeStore]
   CLI --> TS[逐字稿存储<br/>TranscriptStore]
-  KS -->|YAML| Disk1[(knowledge file)]
-  TS -->|YAML| Disk2[(transcript file)]
+  KS -->|SQLite/YAML| Disk1[(knowledge file)]
+  TS -->|SQLite/YAML| Disk2[(transcript file)]
 ```
 
 ## 🚀 快速开始
 
 ### 1. 安装
 
-首先克隆仓库，并使用内置的 `letsgo.py` 脚本完成一键安装：
+首先克隆仓库，并安装到当前环境（可编辑模式）：
 
 ```bash
 git clone <repository_url>
 cd reqx
 
-# 安装依赖并以“可编辑模式”安装本项目
-python letsgo.py
+python -m pip install -e .
 ```
 
 ### 2. 配置
@@ -72,14 +71,14 @@ python letsgo.py
 初始化配置文件：
 
 ```bash
-python letsgo.py --init-config
+reqx init-config
 ```
 
 这会提示你选择配置文件输出路径（也可用 `--config-out` 直接指定）。请根据你的模型服务商编辑该文件（详见下文“支持的模型”）。
 同时，请在项目根目录创建 `.env` 文件填入 API Key：
 
 ```env
-OPENAI_API_KEY=sk-proj-xxxxxxxx...
+OPENAI_API_KEY=YOUR_OPENAI_API_KEY
 ```
 
 ### 3. 运行
@@ -107,13 +106,20 @@ python -m agents
 | `/spec` | **核心功能**。基于当前对话生成需求规约 YAML（预览模式）。 |
 | `/done` | **完成任务**。生成最终版规约，自动构思项目名称，并结束流程。 |
 | `/show` | 显示当前已提取的项目知识。 |
-| `/reset` | 清空本轮对话记录（保留已提取的知识）。 |
+| `/reset` | 清空本轮对话记录，并清空落盘逐字稿（保留已提取的知识）。 |
 | `/exit` | 退出程序。 |
 
 非交互（CI）常用方式：
 - `reqx --help` 查看全部参数与用法
-- `reqx --config llm.yaml --knowledge path/to/project_knowledge.yaml --spec`
-- `reqx --config llm.yaml --knowledge path/to/project_knowledge.yaml --done --auto-pick-name`
+- `reqx spec --config llm.yaml --knowledge path/to/project_knowledge.db`
+- `reqx done --config llm.yaml --knowledge path/to/project_knowledge.db --auto-pick-name`
+
+逐字稿默认行为：
+- 若你把 `--transcript` 指向一个已存在的文件，默认会视为**新会话**并清空旧逐字稿；如需继续追加，用 `--resume-transcript`。
+
+WebUI（本机）：
+- `reqx web --config llm.yaml --bind 127.0.0.1 --port 8788`
+- 写入类接口（chat/send、config/prompt write）默认要求 `Authorization: Bearer $REQX_WEB_TOKEN`；config/prompt read 返回内容会做脱敏处理。
 
 **对话示例：**
 

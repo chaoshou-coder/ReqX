@@ -69,10 +69,10 @@ api_key_env: DEEPSEEK_API_KEY
 
 ```env
 # 如果你是 OpenAI
-OPENAI_API_KEY=sk-proj-xxxxxxxxxxxxxxxx
+OPENAI_API_KEY=YOUR_OPENAI_API_KEY
 
 # 如果你是 DeepSeek
-DEEPSEEK_API_KEY=sk-xxxxxxxxxxxxxxxx
+DEEPSEEK_API_KEY=YOUR_DEEPSEEK_API_KEY
 ```
 程序会自动读取这个文件。
 
@@ -128,7 +128,7 @@ reqx --help
 
 *   **`/spec`**：**最核心的功能**。查看当前生成的“项目规约”。它会把零散的对话整理成一份 YAML 文档展示给你。你可以多轮对话，多次生成，直到满意为止。
 *   **`/show`**：查看助手目前记录了哪些“项目知识”。
-*   **`/reset`**：觉得聊偏了？输入这个清空当前的对话上下文（但已保存的知识不会丢）。
+*   **`/reset`**：清空当前对话上下文，并清空落盘逐字稿（但已保存的知识不会丢）。
 *   **`/done`**：**任务完成**。
     1.  系统会生成最终版的规约。
     2.  根据规约，自动为你构思 10 个项目名称供你选择。
@@ -149,10 +149,36 @@ reqx --config llm.yaml --knowledge path\to\project_knowledge.yaml --spec
 reqx --config llm.yaml --knowledge path\to\project_knowledge.yaml --done --auto-pick-name
 ```
 
+### 3.3.2 外部 Agent 写入项目知识（本地 API）
+
+如果你有一个“通过 API 接入的 agent”，并希望它**直接编辑本机的项目知识库文件**，可以启动本地知识库 API，然后由 agent 调用 HTTP 接口完成写入。
+
+启动服务（默认仅监听本机 127.0.0.1）：
+
+```powershell
+reqx-knowledge-api --knowledge path\to\project_knowledge.yaml --port 8787
+```
+
+追加知识条目：
+
+```powershell
+Invoke-RestMethod `
+  -Method Post `
+  -Uri http://127.0.0.1:8787/v1/knowledge/append `
+  -ContentType "application/json" `
+  -Body '{"items":["目标用户：考研党","功能：导入 PDF 真题"]}'
+```
+
+读取当前知识库快照：
+
+```powershell
+Invoke-RestMethod -Uri "http://127.0.0.1:8787/v1/knowledge/read"
+```
+
 ### 3.4 结果文件
 对话结束后，你可以在项目目录下找到以下文件：
 *   项目知识文件：启动时你选择或通过参数 `--knowledge` 指定的路径（默认提示为当前目录的 `project_knowledge.yaml`）。
-*   逐字稿文件：启动时你选择输出目录或通过参数 `--transcript/--transcript-dir` 指定的路径。
+*   逐字稿文件：启动时你选择输出目录或通过参数 `--transcript/--transcript-dir` 指定的路径；若 `--transcript` 指向已存在文件，默认新会话会清空旧记录，使用 `--resume-transcript` 才会继续追加。
 
 ## 4. 常见问题 (FAQ)
 

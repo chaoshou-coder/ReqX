@@ -8,11 +8,12 @@ version = "0.0.1"
 description = "ReqX: LLM-based requirement excavation and spec generator"
 readme = "README.md"
 requires-python = ">=3.10"
-dependencies = ["crewai", "langchain-openai", "PyYAML"]
+dependencies = ["crewai", "langchain-openai", "PyYAML", "dacite"]
 
 [project.scripts]
 requirements-excavate = "agents.cli:main"
 reqx = "agents.cli:main"
+reqx-knowledge-api = "agents.entrypoints:knowledge_api_main"
 
 [project.optional-dependencies]
 anthropic = ["langchain-anthropic", "anthropic"]
@@ -21,4 +22,7 @@ dotenv = ["python-dotenv"]
 dev = ["ruff", "mypy", "types-PyYAML"]
 
 [tool.setuptools]
-packages = ["agents"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agents*"]
