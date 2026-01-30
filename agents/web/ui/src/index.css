@@ -1,0 +1,72 @@
+@import "tailwindcss";
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-[#131314] text-[#e3e3e3] antialiased;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans SC", "Helvetica Neue", Arial, sans-serif;
+    color-scheme: dark;
+  }
+}
+
+@keyframes reqx-slide-up {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reqx-animate-slide-up {
+  animation: reqx-slide-up 180ms ease-out both;
+}
+
+@keyframes reqx-fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.reqx-animate-fade-in {
+  animation: reqx-fade-in 220ms ease-out both;
+}
+
+.reqx-fade-in {
+  opacity: 1;
+}
+
+@keyframes reqx-dot-pulse {
+  0%,
+  100% {
+    opacity: 0.25;
+    transform: translateY(0);
+  }
+  50% {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+}
+
+.reqx-dot-pulse {
+  animation: reqx-dot-pulse 900ms ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .reqx-animate-slide-up,
+  .reqx-animate-fade-in,
+  .reqx-dot-pulse {
+    animation: none !important;
+  }
+}

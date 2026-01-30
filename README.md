@@ -139,7 +139,7 @@ python -m agents
 WebUI（本机）：
 - `reqx web --config llm.yaml --bind 127.0.0.1 --port 8788`
 - 该命令会启动本机 Web 服务器并占用终端；交互式终端下会尝试自动打开浏览器；停止服务按 `Ctrl+C`。
-- 写入类接口（chat/send、config/prompt write）默认要求 `Authorization: Bearer $REQX_WEB_TOKEN`；config/prompt read 返回内容会做脱敏处理。
+- 建议设置 `REQX_WEB_TOKEN` 保护写入类接口（chat/send、config/prompt write）。WebUI 左侧的 `Token` 输入框用于填入同一个 token，浏览器会用 `Authorization: Bearer <token>` 携带它；config/prompt read 返回内容会做脱敏处理。详见 [doc/06_auth_and_security.md](doc/06_auth_and_security.md)。
 
 **对话示例：**
 
@@ -195,6 +195,7 @@ api_key_env: ANTHROPIC_API_KEY
 *   [**03_使用说明书**](doc/03_user_manual.md)：详细的操作手册与 FAQ。
 *   [**04_CLI 参数参考**](doc/04_cli_reference.md)：所有命令、所有参数与 CI/交互使用场景。
 *   [**05_全流程操作案例**](doc/05_end_to_end_workflow.md)：从安装到产出规约的端到端案例。
+*   [**06_鉴权 Token 与安全建议**](doc/06_auth_and_security.md)：Token 是什么、为什么要用、如何设置与接口调用示例。
 
 ---
 
@@ -208,6 +209,10 @@ api_key_env: ANTHROPIC_API_KEY
 *   `reqx install`：安装本仓库（可编辑模式）。
 *   `reqx init-config`：生成配置文件。
 *   `reqx wizard`：一键配置向导（生成配置/写入 env/健康检查）。
+
+WebUI 前端工程（Vite + React + Tailwind）：
+- 源码在 `agents/web/ui/`；服务端实际返回的是构建导出的 `agents/web/static/webui.html`
+- 修改前端后，在 `agents/web/ui/` 目录执行 `npm run build:webui` 重新导出
 
 ---
 

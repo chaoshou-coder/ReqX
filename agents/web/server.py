@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict
+import base64
 import hmac
 import json
 import os
@@ -13,13 +14,16 @@ from urllib.parse import urlparse
 
 from ..cli.common import (
     PROMPT_VERSION,
+    generate_project_names,
     load_global_prompt,
     parse_knowledge_update,
+    tool_run,
     truncate_text,
 )
 from ..service.knowledge_service import KnowledgeService
 from ..storage.knowledge_store import open_knowledge_store
 from ..core.llm_factory import get_llm, load_llm_config, redact_secrets
+from ..core.requirement_excavation_skill import RequirementExcavationSkill
 
 
 _DEFAULT_BIND = "127.0.0.1"
@@ -27,699 +31,55 @@ _DEFAULT_PORT = 8788
 _MAX_BODY_BYTES_DEFAULT = 2 * 1024 * 1024
 
 
-_INDEX_HTML = """<!doctype html>
+_WEBUI_HTML_PATH = Path(__file__).resolve().parent / "static" / "webui.html"
+
+
+def _make_nonce() -> str:
+    return base64.b64encode(os.urandom(16)).decode("ascii")
+
+
+def _inject_nonce(html: str, nonce: str) -> str:
+    def _inject_first_tag(tag: str, doc: str) -> str:
+        lower = doc.lower()
+        needle = f"<{tag}"
+        start = lower.find(needle)
+        if start < 0:
+            return doc
+        end = doc.find(">", start)
+        if end < 0:
+            return doc
+        head = doc[start:end]
+        if "nonce=" in head.lower():
+            return doc
+        insert_at = start + len(needle)
+        return doc[:insert_at] + f' nonce="{nonce}"' + doc[insert_at:]
+
+    out = html
+    out = _inject_first_tag("script", out)
+    out = _inject_first_tag("style", out)
+    return out
+
+
+def _load_webui_html() -> str:
+    try:
+        return _WEBUI_HTML_PATH.read_text(encoding="utf-8")
+    except Exception:
+        return """<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-    <title>ReqX Studio</title>
-    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;700&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-    <style>
-      :root {
-        /* Gemini Light Theme */
-        --bg-body: #ffffff;
-        --bg-sidebar: #f0f4f9;
-        --bg-input: #f0f4f9;
-        --text-primary: #1f1f1f;
-        --text-secondary: #444746;
-        --accent-color: #0b57d0; /* Google Blue */
-        --accent-hover: #0842a0;
-        --surface-hover: #e3e3e3;
-        --border-color: #e0e3e7;
-        --user-msg-bg: #f0f4f9;
-        --user-msg-text: #1f1f1f;
-        --bot-msg-bg: transparent;
-        --code-bg: #f0f4f9;
-        --shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
-        --font-sans: 'Google Sans', 'Roboto', -apple-system, sans-serif;
-        --font-mono: 'Roboto Mono', monospace;
-        --radius-pill: 999px;
-        --radius-card: 16px;
-      }
-      @media (prefers-color-scheme: dark) {
-        :root {
-          /* Gemini Dark Theme */
-          --bg-body: #131314;
-          --bg-sidebar: #1e1f20;
-          --bg-input: #1e1f20;
-          --text-primary: #e3e3e3;
-          --text-secondary: #c4c7c5;
-          --accent-color: #a8c7fa; /* Light Blue */
-          --accent-hover: #d3e3fd;
-          --surface-hover: #2d2e31;
-          --border-color: #444746;
-          --user-msg-bg: #2d2e31; /* Dark Grey Pill */
-          --user-msg-text: #e3e3e3;
-          --bot-msg-bg: transparent;
-          --code-bg: #1e1f20;
-          --shadow: 0 4px 8px rgba(0,0,0,0.3);
-        }
-      }
-
-      body {
-        font-family: var(--font-sans);
-        margin: 0;
-        background: var(--bg-body);
-        color: var(--text-primary);
-        line-height: 1.6;
-        height: 100vh;
-        overflow: hidden;
-        display: flex;
-      }
-
-      /* Sidebar */
-      .sidebar {
-        width: 280px;
-        background: var(--bg-sidebar);
-        display: flex;
-        flex-direction: column;
-        padding: 20px 16px;
-        gap: 8px;
-        transition: transform 0.3s ease;
-        z-index: 100;
-      }
-      .sidebar-header {
-        padding: 0 12px 16px;
-        font-size: 22px;
-        font-weight: 500;
-        color: var(--text-primary);
-        display: flex;
-        align-items: center;
-        gap: 8px;
-      }
-      .nav-item {
-        padding: 12px 16px;
-        border-radius: var(--radius-pill);
-        cursor: pointer;
-        color: var(--text-primary);
-        font-weight: 500;
-        font-size: 14px;
-        display: flex;
-        align-items: center;
-        gap: 12px;
-        transition: background 0.2s;
-        border: none;
-        background: transparent;
-        text-align: left;
-      }
-      .nav-item:hover { background: var(--surface-hover); }
-      .nav-item.active { background: #004a77; color: #d3e3fd; }
-      @media (prefers-color-scheme: light) {
-        .nav-item.active { background: #d3e3fd; color: #041e49; }
-      }
-
-      /* Main Area */
-      .main {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        position: relative;
-        background: var(--bg-body);
-        border-top-left-radius: 20px; /* Gemini curve */
-        border-bottom-left-radius: 20px;
-        margin-left: 0;
-        overflow: hidden;
-      }
-      /* In mobile/responsive, sidebar might behave differently, but keep simple for now */
-
-      /* Config/Panels */
-      .panel {
-        flex: 1;
-        overflow-y: auto;
-        padding: 40px;
-        display: none;
-        max-width: 800px;
-        margin: 0 auto;
-        width: 100%;
-        box-sizing: border-box;
-      }
-      .panel.active { display: flex; flex-direction: column; gap: 24px; animation: fadeIn 0.3s; }
-
-      /* Form Elements */
-      label {
-        font-size: 12px;
-        font-weight: 500;
-        color: var(--text-secondary);
-        margin-bottom: 8px;
-        display: block;
-      }
-      input, textarea, select {
-        width: 100%;
-        box-sizing: border-box;
-        padding: 14px 16px;
-        border-radius: 8px;
-        border: 1px solid var(--border-color);
-        background: transparent;
-        color: var(--text-primary);
-        font-family: inherit;
-        font-size: 14px;
-        outline: none;
-      }
-      input:focus, textarea:focus {
-        border-color: var(--accent-color);
-        box-shadow: 0 0 0 1px var(--accent-color);
-      }
-      button.btn {
-        padding: 10px 24px;
-        border-radius: var(--radius-pill);
-        border: none;
-        background: transparent;
-        color: var(--accent-color);
-        font-weight: 500;
-        cursor: pointer;
-        transition: background 0.2s;
-      }
-      button.btn:hover { background: rgba(11, 87, 208, 0.1); }
-      button.btn-primary {
-        background: var(--accent-color);
-        color: var(--bg-body);
-      }
-      button.btn-primary:hover {
-        opacity: 0.9;
-        background: var(--accent-color); /* Override transparent hover */
-        box-shadow: 0 1px 3px rgba(0,0,0,0.3);
-      }
-      
-      /* Chat Area */
-      .chat-view {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        height: 100%;
-      }
-      .chat-history {
-        flex: 1;
-        overflow-y: auto;
-        padding: 40px 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 32px;
-        scroll-behavior: smooth;
-      }
-      .chat-content-width {
-        width: 100%;
-        max-width: 800px;
-        margin: 0 auto;
-      }
-      
-      .msg {
-        display: flex;
-        gap: 16px;
-        line-height: 1.6;
-        opacity: 0;
-        animation: slideUp 0.3s forwards;
-      }
-      @keyframes slideUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-
-      .msg-avatar {
-        width: 32px;
-        height: 32px;
-        border-radius: 50%;
-        background: var(--accent-color);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 14px;
-        color: var(--bg-body);
-        flex-shrink: 0;
-      }
-      .msg[data-role="user"] .msg-avatar { background: var(--text-secondary); }
-      
-      .msg-content {
-        flex: 1;
-        min-width: 0;
-        font-size: 16px;
-      }
-      /* User Message Style */
-      .msg[data-role="user"] {
-        flex-direction: row-reverse;
-      }
-      .msg[data-role="user"] .msg-content {
-        background: var(--user-msg-bg);
-        color: var(--user-msg-text);
-        padding: 12px 20px;
-        border-radius: 20px;
-        border-bottom-right-radius: 4px;
-        max-width: 80%;
-      }
-      /* Bot Message Style */
-      .msg[data-role="assistant"] .msg-content {
-        background: transparent;
-        padding: 0; /* No bubble for bot */
-        color: var(--text-primary);
-      }
-
-      /* Markdown overrides */
-      .msg-content h1, .msg-content h2, .msg-content h3 { font-weight: 500; margin-top: 24px; margin-bottom: 8px; }
-      .msg-content p { margin-bottom: 12px; }
-      .msg-content pre {
-        background: var(--code-bg);
-        padding: 16px;
-        border-radius: 12px;
-        overflow-x: auto;
-        border: 1px solid var(--border-color);
-      }
-      .msg-content code { font-family: var(--font-mono); font-size: 0.9em; }
-
-      /* Input Area */
-      .input-area {
-        padding: 20px;
-        background: var(--bg-body);
-      }
-      .input-box {
-        max-width: 800px;
-        margin: 0 auto;
-        background: var(--bg-input);
-        border-radius: 28px; /* High radius for pill shape */
-        padding: 8px 16px;
-        display: flex;
-        align-items: flex-end;
-        gap: 12px;
-        transition: background 0.2s;
-      }
-      .input-box:focus-within {
-        background: var(--bg-input); /* Keep same, maybe darker shadow? */
-      }
-      .input-box textarea {
-        background: transparent;
-        border: none;
-        padding: 12px 0;
-        max-height: 200px;
-        resize: none;
-        font-size: 16px;
-        line-height: 1.5;
-        box-shadow: none !important; /* Remove focus ring */
-      }
-      .send-btn {
-        width: 40px;
-        height: 40px;
-        border-radius: 50%;
-        border: none;
-        background: transparent;
-        color: var(--text-secondary);
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        margin-bottom: 4px;
-        transition: all 0.2s;
-      }
-      .send-btn:hover { background: var(--surface-hover); color: var(--text-primary); }
-      .send-btn.active { color: var(--accent-color); }
-      
-      /* Status */
-      .status-bar {
-        font-size: 12px;
-        color: var(--text-secondary);
-        text-align: center;
-        padding-top: 8px;
-        min-height: 20px;
-      }
-
-      /* Scrollbar */
-      ::-webkit-scrollbar { width: 8px; height: 8px; }
-      ::-webkit-scrollbar-track { background: transparent; }
-      ::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 4px; }
-      ::-webkit-scrollbar-thumb:hover { background: var(--text-secondary); }
-    </style>
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ReqX WebUI</title>
   </head>
-  <body>
-    <aside class="sidebar">
-      <div class="sidebar-header">
-        <span style="font-size:24px;">✨</span> ReqX
-      </div>
-      <button class="nav-item active" onclick="app.tab('chat')">
-        <span>💬</span> Chat
-      </button>
-      <button class="nav-item" onclick="app.tab('knowledge')">
-        <span>📚</span> Knowledge
-      </button>
-      <button class="nav-item" onclick="app.tab('config')">
-        <span>⚙️</span> Config
-      </button>
-      <button class="nav-item" onclick="app.tab('prompt')">
-        <span>📝</span> Prompt
-      </button>
-    </aside>
-
-    <main class="main">
-      <!-- Chat View -->
-      <div id="view-chat" class="chat-view">
-        <div class="chat-history" id="chat-container">
-          <!-- Welcome Message -->
-          <div class="chat-content-width">
-            <div class="msg" data-role="assistant" style="opacity:1; animation:none;">
-              <div class="msg-avatar">✨</div>
-              <div class="msg-content">
-                <h2 style="margin-top:0;">你好, 我是 ReqX</h2>
-                <p>我可以帮助你分析需求、生成代码或管理项目配置。</p>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div class="input-area">
-          <div class="input-box">
-             <textarea id="userInput" placeholder="输入指令或问题..." rows="1"></textarea>
-             <button id="btnSend" class="send-btn">
-               <svg height="24" viewBox="0 0 24 24" width="24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" fill="currentColor"/></svg>
-             </button>
-          </div>
-          <div class="status-bar" id="status">Ready</div>
-        </div>
-      </div>
-
-      <!-- Config Panel -->
-      <div id="view-config" class="panel">
-        <h2>Configuration</h2>
-        <div class="row">
-           <label>Authentication Token</label>
-           <input id="authToken" type="password" placeholder="Optional" />
-        </div>
-        <div class="row" style="margin-top:16px;">
-           <label>Config Path (YAML)</label>
-           <input id="cfgPath" placeholder="llm.yaml" />
-        </div>
-        <div class="row" style="margin-top:16px;">
-           <label>Content</label>
-           <textarea id="cfgContent" style="height:300px; font-family:var(--font-mono);"></textarea>
-        </div>
-        <div class="row" style="margin-top:16px; display:flex; gap:12px;">
-           <button class="btn btn-primary" onclick="app.loadCfg()">Load</button>
-           <button class="btn btn-primary" onclick="app.saveCfg()">Save</button>
-           <button class="btn" onclick="app.doctor()">Run Doctor</button>
-        </div>
-        <div class="row" style="margin-top:16px;">
-           <label>Doctor Output</label>
-           <textarea id="doctorOut" readonly style="height:100px; font-family:var(--font-mono); font-size:12px; background:var(--bg-input);"></textarea>
-        </div>
-      </div>
-
-      <!-- Knowledge Panel -->
-      <div id="view-knowledge" class="panel">
-        <h2>Project Knowledge</h2>
-        <div class="row">
-           <label>Database Path</label>
-           <input id="knowledgePath" placeholder="project_knowledge.db" />
-        </div>
-        <div class="row" style="margin-top:16px;">
-           <label>Snapshot (Read Only)</label>
-           <textarea id="knowledgeSnapshot" readonly style="height:400px; font-family:var(--font-mono); font-size:12px; background:var(--bg-input);"></textarea>
-        </div>
-        <div class="row" style="margin-top:16px;">
-           <button class="btn btn-primary" onclick="app.refreshKnowledge()">Refresh</button>
-        </div>
-      </div>
-
-      <!-- Prompt Panel -->
-      <div id="view-prompt" class="panel">
-        <h2>Global Prompt</h2>
-        <div class="row">
-           <textarea id="promptContent" style="height:500px; font-family:var(--font-mono);"></textarea>
-        </div>
-        <div class="row" style="margin-top:16px; display:flex; gap:12px;">
-           <button class="btn btn-primary" onclick="app.loadPrompt()">Load</button>
-           <button class="btn btn-primary" onclick="app.savePrompt()">Save</button>
-        </div>
-      </div>
-      
-      <!-- Hidden controls for logic compatibility -->
-      <div style="display:none;">
-        <input type="checkbox" id="dryRun" />
-        <textarea id="importedContext"></textarea>
-      </div>
-    </main>
-
-    <script src="/app.js"></script>
+  <body style="font-family:system-ui,-apple-system,Segoe UI,Roboto,Noto Sans SC,Arial,sans-serif;padding:24px;">
+    <h2>WebUI 静态资源缺失</h2>
+    <p>未找到构建产物：agents/web/static/webui.html</p>
+    <p>请在 agents/web/ui 目录执行：</p>
+    <pre>npm ci
+npm run build:webui</pre>
   </body>
 </html>
 """
-
-
-_APP_JS = r"""(() => {
-  const $ = (id) => document.getElementById(id);
-  
-  // State
-  const state = {
-    messages: [],
-    knowledgeSnapshot: null,
-  };
-
-  // Markdown Renderer (Simplified)
-  function renderMarkdown(md) {
-    const src = (md ?? "").replace(/\r\n/g, "\n");
-    const blocks = [];
-    const placeholder = (i) => `@@CODE_BLOCK_${i}@@`;
-    let text = src.replace(/```([\s\S]*?)```/g, (_m, code) => {
-      const i = blocks.length;
-      blocks.push(code);
-      return placeholder(i);
-    });
-    const esc = (s) => (s ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
-    text = esc(text);
-    text = text.replace(/@@CODE_BLOCK_(\d+)@@/g, (_m, idx) => {
-      const i = Number(idx);
-      const code = blocks[i] ?? "";
-      return `<pre><code>${esc(code.trim())}</code></pre>`;
-    });
-    text = text.replace(/`([^`]+)`/g, (_m, code) => `<code>${esc(code)}</code>`);
-    text = text.replace(/^### (.*)$/gm, "<h3>$1</h3>");
-    text = text.replace(/^## (.*)$/gm, "<h2>$1</h2>");
-    text = text.replace(/^# (.*)$/gm, "<h1>$1</h1>");
-    text = text.replace(/^\s*[-*] (.*)$/gm, "<li>$1</li>");
-    text = text.replace(/(<li>[\s\S]*?<\/li>)/g, "<ul>$1</ul>");
-    text = text.replace(/\n{2,}/g, "</p><p>");
-    text = `<p>${text}</p>`;
-    return text;
-  }
-
-  // App Logic
-  const app = {
-    setStatus(text, ok = true) {
-      const el = $("status");
-      el.textContent = text;
-      el.style.color = ok ? "var(--text-secondary)" : "#ff4444";
-    },
-
-    tab(name) {
-      document.querySelectorAll(".nav-item").forEach(b => b.classList.remove("active"));
-      // Simple heuristic for nav item highlighting
-      const navs = document.querySelectorAll(".nav-item");
-      if(name==='chat') navs[0].classList.add("active");
-      if(name==='knowledge') navs[1].classList.add("active");
-      if(name==='config') navs[2].classList.add("active");
-      if(name==='prompt') navs[3].classList.add("active");
-
-      document.querySelectorAll(".panel, .chat-view").forEach(p => p.style.display = "none");
-      if (name === "chat") {
-        $("view-chat").style.display = "flex";
-      } else {
-        $("view-" + name).style.display = "flex";
-        $("view-" + name).classList.add("active");
-      }
-    },
-
-    renderChat() {
-      // Clear user generated messages (keep welcome msg if possible, but simpler to rebuild)
-      const container = $("chat-container");
-      // Find the inner content width container
-      let contentDiv = container.querySelector(".chat-content-width");
-      if (!contentDiv) {
-         contentDiv = document.createElement("div");
-         contentDiv.className = "chat-content-width";
-         container.appendChild(contentDiv);
-      }
-      
-      // We will rebuild the chat list for simplicity or append.
-      // To avoid flashing, let's clear and rebuild.
-      contentDiv.innerHTML = "";
-      
-      // Add welcome
-      contentDiv.innerHTML += `
-        <div class="msg" data-role="assistant" style="opacity:1; animation:none;">
-          <div class="msg-avatar">✨</div>
-          <div class="msg-content">
-            <h2 style="margin-top:0;">你好, 我是 ReqX</h2>
-            <p>我可以帮助你分析需求、生成代码或管理项目配置。</p>
-          </div>
-        </div>`;
-
-      for (const msg of state.messages) {
-        const div = document.createElement("div");
-        div.className = "msg";
-        div.setAttribute("data-role", msg.role);
-        
-        const avatar = document.createElement("div");
-        avatar.className = "msg-avatar";
-        avatar.textContent = msg.role === "user" ? "U" : "✨";
-        
-        const content = document.createElement("div");
-        content.className = "msg-content";
-        const esc = (s) => (s ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
-        
-        if (msg.role === "assistant") {
-          content.innerHTML = renderMarkdown(msg.content);
-        } else {
-          content.innerText = msg.content; // text only for user
-        }
-        
-        div.appendChild(avatar);
-        div.appendChild(content);
-        contentDiv.appendChild(div);
-      }
-      // Scroll
-      container.scrollTop = container.scrollHeight;
-    },
-
-    saveLocal() {
-      localStorage.setItem("reqx_authToken", $("authToken").value);
-      localStorage.setItem("reqx_cfgPath", $("cfgPath").value);
-      localStorage.setItem("reqx_knowledgePath", $("knowledgePath").value);
-    },
-
-    loadLocal() {
-      $("authToken").value = localStorage.getItem("reqx_authToken") || "";
-      $("cfgPath").value = localStorage.getItem("reqx_cfgPath") || "llm.yaml";
-      $("knowledgePath").value = localStorage.getItem("reqx_knowledgePath") || "project_knowledge.db";
-    },
-
-    async apiJson(method, path, body) {
-      const token = $("authToken").value.trim();
-      const headers = {"Content-Type": "application/json; charset=utf-8"};
-      if (token) headers["Authorization"] = `Bearer ${token}`;
-      try {
-        const res = await fetch(path, {
-          method, headers, body: body ? JSON.stringify(body) : undefined
-        });
-        return await res.json();
-      } catch (e) {
-        return {ok: false, error: {code: "network_error", message: String(e)}};
-      }
-    },
-
-    async send() {
-      app.saveLocal();
-      const text = $("userInput").value;
-      if (!text.trim()) return;
-      
-      // Add user message
-      state.messages.push({role: "user", content: text});
-      $("userInput").value = "";
-      $("userInput").style.height = "auto"; // reset height
-      app.renderChat();
-      app.setStatus("Thinking...");
-
-      const payload = {
-        config_path: $("cfgPath").value.trim() || null,
-        knowledge_path: $("knowledgePath").value.trim() || null,
-        dry_run: $("dryRun").checked,
-        imported_context: $("importedContext").value || "",
-        messages: state.messages,
-      };
-
-      const r = await app.apiJson("POST", "/v1/chat/send", payload);
-      if (!r.ok) {
-        app.setStatus(`Error: ${r.error?.code || "unknown"}`, false);
-        return;
-      }
-      
-      state.messages.push({role: "assistant", content: r.result.reply});
-      app.renderChat();
-      
-      if (r.result.knowledge_appended > 0) {
-        await app.refreshKnowledge();
-        app.setStatus(`Done (Learned ${r.result.knowledge_appended} items)`);
-      } else {
-        app.setStatus("Ready");
-      }
-    },
-
-    async refreshKnowledge() {
-      app.saveLocal();
-      const kp = $("knowledgePath").value.trim();
-      const r = await app.apiJson("POST", "/v1/knowledge/read", {knowledge_path: kp || null});
-      if (r.ok) {
-        $("knowledgeSnapshot").value = JSON.stringify(r.result, null, 2);
-        app.setStatus("Knowledge refreshed");
-      }
-    },
-
-    async loadCfg() {
-      app.saveLocal();
-      const p = $("cfgPath").value.trim();
-      const r = await app.apiJson("POST", "/v1/config/read", {path: p || null});
-      if (r.ok) {
-        $("cfgContent").value = r.result.content || "";
-        app.setStatus("Config loaded");
-      } else {
-        app.setStatus("Load failed", false);
-      }
-    },
-
-    async saveCfg() {
-      app.saveLocal();
-      const r = await app.apiJson("POST", "/v1/config/write", {
-        path: $("cfgPath").value.trim() || null, 
-        content: $("cfgContent").value || "",
-        dry_run: $("dryRun").checked
-      });
-      if (r.ok) app.setStatus("Config saved");
-      else app.setStatus("Save failed", false);
-    },
-
-    async doctor() {
-      app.saveLocal();
-      const r = await app.apiJson("POST", "/v1/config/doctor", {path: $("cfgPath").value.trim() || null});
-      if (r.ok) {
-        $("doctorOut").value = JSON.stringify(r.result, null, 2);
-        app.setStatus("Doctor passed");
-      } else {
-        $("doctorOut").value = "Failed";
-        app.setStatus("Doctor failed", false);
-      }
-    },
-    
-    async loadPrompt() {
-      const r = await app.apiJson("POST", "/v1/prompt/read", {});
-      if (r.ok) {
-         $("promptContent").value = r.result.content || "";
-         app.setStatus("Prompt loaded");
-      }
-    },
-    
-    async savePrompt() {
-      const r = await app.apiJson("POST", "/v1/prompt/write", {content: $("promptContent").value || "", dry_run: false});
-      if (r.ok) app.setStatus("Prompt saved");
-      else app.setStatus("Save failed", false);
-    }
-  };
-
-  // Expose to window for onclick handlers
-  window.app = app;
-
-  // Init
-  $("btnSend").addEventListener("click", app.send);
-  
-  // Auto-resize textarea
-  const ta = $("userInput");
-  ta.addEventListener("input", function() {
-    this.style.height = "auto";
-    this.style.height = (this.scrollHeight) + "px";
-    if (this.value === "") this.style.height = "auto";
-  });
-  ta.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      app.send();
-    }
-  });
-
-  app.loadLocal();
-  app.refreshKnowledge().catch(()=>{});
-  app.loadCfg().catch(()=>{});
-  app.loadPrompt().catch(()=>{});
-
-})();"""
 
 
 class _JsonError(Exception):
@@ -756,17 +116,22 @@ def _read_json(handler: BaseHTTPRequestHandler, *, limit: int) -> dict[str, Any]
     return obj
 
 
-def _apply_security_headers(handler: BaseHTTPRequestHandler) -> None:
+def _apply_security_headers(handler: BaseHTTPRequestHandler, *, nonce: str | None = None) -> None:
     handler.send_header("Cache-Control", "no-store")
     handler.send_header("X-Content-Type-Options", "nosniff")
     handler.send_header("X-Frame-Options", "DENY")
     handler.send_header("Referrer-Policy", "no-referrer")
+    script_src = "script-src 'self'; "
+    style_src = "style-src 'self'; "
+    if nonce:
+        script_src = f"script-src 'self' 'nonce-{nonce}'; "
+        style_src = f"style-src 'self' 'nonce-{nonce}'; "
     handler.send_header(
         "Content-Security-Policy",
         "default-src 'none'; "
         "connect-src 'self'; "
-        "script-src 'self'; "
-        "style-src 'self'; "
+        f"{script_src}"
+        f"{style_src}"
         "img-src 'self' data:; "
         "base-uri 'none'; "
         "frame-ancestors 'none'",
@@ -788,11 +153,17 @@ def _write_json(
 
 
 def _write_text(
-    handler: BaseHTTPRequestHandler, status: int, body: str, *, content_type: str, headers: dict[str, str] | None = None
+    handler: BaseHTTPRequestHandler,
+    status: int,
+    body: str,
+    *,
+    content_type: str,
+    headers: dict[str, str] | None = None,
+    nonce: str | None = None,
 ) -> None:
     raw = body.encode("utf-8")
     handler.send_response(status)
-    _apply_security_headers(handler)
+    _apply_security_headers(handler, nonce=nonce)
     handler.send_header("Content-Type", content_type)
     handler.send_header("Content-Length", str(len(raw)))
     for k, v in (headers or {}).items():
@@ -951,10 +322,14 @@ class WebUIServer:
                 try:
                     parsed = urlparse(self.path)
                     if parsed.path == "/" or parsed.path == "/index.html":
-                        _write_text(self, 200, _INDEX_HTML, content_type="text/html; charset=utf-8")
+                        nonce = _make_nonce()
+                        html = _inject_nonce(_load_webui_html(), nonce)
+                        _write_text(self, 200, html, content_type="text/html; charset=utf-8", nonce=nonce)
                         return
-                    if parsed.path == "/app.js":
-                        _write_text(self, 200, _APP_JS, content_type="application/javascript; charset=utf-8")
+                    if parsed.path == "/favicon.ico":
+                        self.send_response(204)
+                        _apply_security_headers(self)
+                        self.end_headers()
                         return
                     if parsed.path == "/health":
                         _write_json(self, 200, {"ok": True})
@@ -1089,6 +464,8 @@ class WebUIServer:
                         if not messages or messages[-1][0] != "user":
                             raise _JsonError("missing_or_invalid_messages")
 
+                        cmd = (messages[-1][1] or "").strip().lower()
+
                         cfg_path = _resolve_under(
                             server.repo_root, cfg_path_raw if isinstance(cfg_path_raw, str) else None, default_name="llm.yaml"
                         )
@@ -1101,6 +478,96 @@ class WebUIServer:
 
                         ks = open_knowledge_store(knowledge_path)
                         ks.load()
+
+                        if cmd in {"/exit", "/quit"}:
+                            _write_json(
+                                self,
+                                200,
+                                {
+                                    "ok": True,
+                                    "result": {"reply": "已退出。", "knowledge_appended": 0, "dry_run": bool(dry_run or server.dry_run)},
+                                },
+                            )
+                            return
+                        if cmd in {"/help", "/h"}:
+                            _write_json(
+                                self,
+                                200,
+                                {
+                                    "ok": True,
+                                    "result": {
+                                        "reply": (
+                                            "命令说明：\n"
+                                            "- /spec: 基于项目知识生成需求 YAML（不结束）\n"
+                                            "- /done: 生成需求 YAML → 生成 10 个项目名（默认选第 1 个）\n"
+                                            "- /show: 显示当前项目知识\n"
+                                            "- /reset: 清空本次页面对话记录\n"
+                                            "- /exit: 退出\n"
+                                        ),
+                                        "knowledge_appended": 0,
+                                        "dry_run": bool(dry_run or server.dry_run),
+                                    },
+                                },
+                            )
+                            return
+                        if cmd == "/reset":
+                            _write_json(
+                                self,
+                                200,
+                                {
+                                    "ok": True,
+                                    "result": {
+                                        "reply": "本轮对话记录已清空（仅影响本页面显示）。\n",
+                                        "knowledge_appended": 0,
+                                        "dry_run": bool(dry_run or server.dry_run),
+                                    },
+                                },
+                            )
+                            return
+                        if cmd == "/show":
+                            _write_json(
+                                self,
+                                200,
+                                {
+                                    "ok": True,
+                                    "result": {
+                                        "reply": (ks.transcript() or "") + "\n",
+                                        "knowledge_appended": 0,
+                                        "dry_run": bool(dry_run or server.dry_run),
+                                    },
+                                },
+                            )
+                            return
+                        if cmd in {"/spec", "/done"}:
+                            llm = get_llm(config_path=str(cfg_path), strict=True)
+                            tool = RequirementExcavationSkill(llm=llm, config_path=str(cfg_path))
+                            surface = ("项目知识（按时间顺序）：\n" + ks.transcript()) if ks.transcript() else ""
+                            spec_yaml = tool_run(tool, surface)
+                            ks.latest_spec_yaml = spec_yaml
+                            if not (dry_run or server.dry_run):
+                                ks.save()
+                            reply = spec_yaml
+                            if cmd == "/done":
+                                names = generate_project_names(llm, ks.latest_spec_yaml or spec_yaml)
+                                project_name = names[0] if names else "未命名项目"
+                                ks.project_name = project_name
+                                if not (dry_run or server.dry_run):
+                                    ks.save()
+                                reply = (
+                                    spec_yaml
+                                    + "\n\n"
+                                    + "候选项目名：\n"
+                                    + "\n".join([f"{i+1}. {n}" for i, n in enumerate(names)])
+                                    + "\n\n"
+                                    + f"已选择项目名称：{project_name}\n"
+                                    + "全流程结束。可输入 /exit 退出。\n"
+                                )
+                            _write_json(
+                                self,
+                                200,
+                                {"ok": True, "result": {"reply": reply, "knowledge_appended": 0, "dry_run": bool(dry_run or server.dry_run)}},
+                            )
+                            return
                         project_knowledge = ks.transcript()
                         global_prompt = server.read_global_prompt()
                         prompt = _build_web_chat_prompt(

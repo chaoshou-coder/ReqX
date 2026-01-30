@@ -153,6 +153,7 @@ WebUI 中：
 - “配置”页签：读取/保存 `llm.yaml`（读取内容会脱敏展示）
 - “Doctor”按钮：解析配置并输出摘要（脱敏）
 - “对话”页签：发送消息并把稳定信息写入知识库（后端会解析 `<KNOWLEDGE>...</KNOWLEDGE>`）
+- Token 是一个你自己设置的共享密钥，用于避免同机其它进程/网页误调用写接口；完整说明见：[06_auth_and_security.md](06_auth_and_security.md)
 
 ## 8. CI / 脚本化全流程（可选）
 

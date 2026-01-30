@@ -61,6 +61,8 @@ reqx web --config llm.yaml --bind 127.0.0.1 --port 8788
 
 命令会启动本机 Web 服务器并占用当前终端（正常现象）。在交互式终端下，程序会尝试自动打开浏览器；你也可以手动打开浏览器访问 `http://127.0.0.1:8788/`，切换到“配置”页签即可读取/保存 `llm.yaml`。停止服务请按 `Ctrl+C`。
 
+WebUI 的“对话”页签支持本地多会话历史、编辑用户消息并重新生成、代码块一键复制等交互（均保存在浏览器 localStorage）。
+
 ### 2.2 编辑 `llm.yaml`
 用你喜欢的文本编辑器打开 `llm.yaml`，根据你的模型服务商进行修改。
 
@@ -218,14 +220,25 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8787/v1/knowledge/read"
 | `REQX_WEB_TOKEN` | - | 启用 Web UI 的访问鉴权 Token。 |
 | `REQX_DEBUG_RAW_OUTPUT` | `0` | 设为 `1` 可在报错时显示原始模型输出（包含未脱敏内容，仅用于本地调试）。 |
 
-### 4.2 配置文件高级选项 (`llm.yaml`)
+### 4.2 WebUI / Web API 鉴权 Token（必读）
+
+当你启动 WebUI（`reqx web ...`）后，会暴露一组本地 HTTP 接口（例如 `/v1/chat/send`、`/v1/config/write` 等），其中一部分接口会**写入你的本地文件**（配置、提示词、知识库）。
+
+- **Token 是什么**：一个你自己设置的“共享密钥字符串”。
+- **为什么要用**：防止同机其它进程/脚本/网页在你不知情的情况下调用写入接口，静默修改你的本地文件。
+- **怎么启用**：设置环境变量 `REQX_WEB_TOKEN`，然后再启动 `reqx web`。
+- **WebUI 怎么用**：把同一个 token 填到 WebUI 左侧边栏的 `Token` 输入框里，WebUI 会用 `Authorization: Bearer <token>` 带上它。
+
+更完整的解释、示例与安全建议见：[06_auth_and_security.md](06_auth_and_security.md)。
+
+### 4.3 配置文件高级选项 (`llm.yaml`)
 ```yaml
 input_char_limit: 8000   # 限制输入上下文长度，防止 Token 溢出
 output_char_limit: 20000 # 限制模型输出长度
 azure_api_key_env: MY_AZURE_KEY # 自定义 Azure Key 的环境变量名
 ```
 
-### 4.3 Web API 接入
+### 4.4 Web API 接入
 你可以启动 Web 服务，让其他程序通过 HTTP 调用本系统的能力。
 
 **启动服务**：

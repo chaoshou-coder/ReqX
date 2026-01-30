@@ -117,6 +117,19 @@
     *   **Knowledge API Token**: 使用环境变量 `REQX_KNOWLEDGE_API_TOKEN` 进行保护。
     *   *注：写入类接口强制鉴权，读取类接口在未配置 Token 时允许匿名访问（但会对敏感字段脱敏）。*
 
+#### 2.4.1 WebUI 前端工程（Vite + React + Tailwind）
+
+WebUI 的前端不是“Python 内嵌字符串”，而是一个独立的前端工程，构建后导出成单文件 HTML 并由 Python 服务端直接读取返回：
+
+- 前端源码目录：`agents/web/ui/`
+- 构建产物（服务端实际返回）：`agents/web/static/webui.html`
+- 构建命令：在 `agents/web/ui` 下运行 `npm run build:webui`（会自动导出到 `agents/web/static/webui.html`）
+
+这带来的好处是：
+
+- UI/交互可以使用现代前端工程化方式迭代（组件、样式、动画、构建优化）。
+- 服务端保持轻量：只负责静态文件分发与 API。
+
 ### 2.5 数据存储模块
 [代码引用: agents/storage/knowledge_store.py](../agents/storage/knowledge_store.py)
 [代码引用: agents/storage/transcript_store.py](../agents/storage/transcript_store.py)
