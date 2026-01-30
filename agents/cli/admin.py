@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import importlib
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -148,6 +149,19 @@ def install_main(*, no_deps: bool = True) -> int:
     cmd = [python, "-m", "pip", "install", "-e", str(repo_root)]
     if no_deps:
         cmd.append("--no-deps")
+    if os.name == "nt":
+        argv0 = (Path(sys.argv[0]).name or "").lower()
+        if argv0 in {"reqx.exe", "requirements-excavate.exe"}:
+            launcher = [
+                python,
+                "-c",
+                "import subprocess, sys, time; time.sleep(1.0); raise SystemExit(subprocess.call(sys.argv[1:]))",
+                *cmd,
+            ]
+            subprocess.Popen(launcher)
+            sys.stdout.write("已启动安装进程（稍后开始执行）；请等待其完成后再运行 reqx。\n")
+            return 0
+
     subprocess.check_call(cmd)
     sys.stdout.write("完成：已以可编辑模式安装本仓库。\n")
     return 0
@@ -284,4 +298,3 @@ def wizard_main() -> int:
             return 0
         sys.stdout.write("\n健康检查未通过。\n")
     return 0
-

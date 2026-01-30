@@ -11,8 +11,8 @@ requires-python = ">=3.10"
 dependencies = ["crewai", "langchain-openai", "PyYAML", "dacite"]
 
 [project.scripts]
-requirements-excavate = "agents.cli:main"
-reqx = "agents.cli:main"
+requirements-excavate = "agents.cli.main:main"
+reqx = "agents.cli.main:main"
 reqx-knowledge-api = "agents.entrypoints:knowledge_api_main"
 
 [project.optional-dependencies]

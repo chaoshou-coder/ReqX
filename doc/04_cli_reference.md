@@ -123,6 +123,10 @@ WebUI 中编辑配置（可视化；同时暴露 `/v1/config/*` 与 `/v1/chat/se
 reqx web --config llm.yaml --bind 127.0.0.1 --port 8788
 ```
 
+说明：
+- 该命令会启动一个本地 Web 服务器并占用当前终端，停止服务按 `Ctrl+C`。
+- 默认会在交互式终端中自动打开浏览器；可用 `--no-open-browser` 关闭，或用 `--open-browser` 强制开启。
+
 ### 1.7 本地知识库编辑 API：reqx knowledge-api / reqx-knowledge-api
 
 用途：为外部 agent 提供一个本机 HTTP 接口，用于追加/读取项目知识库（不做内容抽取与判断，仅负责校验与原子落盘）。

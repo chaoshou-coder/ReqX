@@ -56,7 +56,7 @@ reqx wizard
 reqx web --config llm.yaml --bind 127.0.0.1 --port 8788
 ```
 
-打开 `http://127.0.0.1:8788/`，在“配置”页签读取/编辑/保存 `llm.yaml`。
+该命令会启动本机 Web 服务器并占用当前终端（正常现象）。在交互式终端下，程序会尝试自动打开浏览器；你也可以手动打开 `http://127.0.0.1:8788/`，在“配置”页签读取/编辑/保存 `llm.yaml`。停止服务请按 `Ctrl+C`。
 
 ## 3. 健康检查（推荐）
 
@@ -178,4 +178,3 @@ reqx check-api --config llm.yaml
 reqx spec --config llm.yaml --knowledge project_knowledge.db > spec_preview.yaml
 reqx done --config llm.yaml --knowledge project_knowledge.db --auto-pick-name > spec_final.yaml
 ```
-

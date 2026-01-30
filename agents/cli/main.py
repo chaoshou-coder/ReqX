@@ -4,6 +4,8 @@ import argparse
 import os
 from pathlib import Path
 import sys
+import threading
+import webbrowser
 
 import yaml
 
@@ -109,6 +111,8 @@ def _build_parser() -> argparse.ArgumentParser:
     p_web.add_argument("--bind", default="127.0.0.1", help="WebUI 监听地址（默认 127.0.0.1）")
     p_web.add_argument("--port", type=int, default=8788, help="WebUI 监听端口（默认 8788）")
     p_web.add_argument("--dry-run", action="store_true", help="只演练不落盘（WebUI 禁止写入）")
+    p_web.add_argument("--open-browser", action="store_true", help="启动后自动打开浏览器（默认：交互终端下开启）")
+    p_web.add_argument("--no-open-browser", action="store_true", help="不自动打开浏览器（覆盖默认行为）")
 
     p_kapi = sub.add_parser("knowledge-api", help="启动本地 Knowledge HTTP API")
     p_kapi.add_argument("--bind", default="127.0.0.1")
@@ -137,6 +141,18 @@ def _build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
+    def _is_interactive_terminal() -> bool:
+        return bool(getattr(sys.stdin, "isatty", lambda: False)()) and bool(getattr(sys.stdout, "isatty", lambda: False)())
+
+    def _open_browser_later(url: str) -> None:
+        def _open() -> None:
+            try:
+                webbrowser.open(url, new=2)
+            except Exception:
+                pass
+
+        threading.Timer(0.8, _open).start()
+
     argv = list(argv) if argv is not None else sys.argv[1:]
     if not argv or argv[0].startswith("-"):
         args = _build_legacy_parser().parse_args(argv)
@@ -160,6 +176,10 @@ def main(argv: list[str] | None = None) -> int:
                 return 1
             from ..web.server import serve_webui
 
+            url = f"http://{args.web_bind}:{int(args.web_port)}/"
+            sys.stderr.write(f"WebUI listening on {url} (Ctrl+C to stop)\n")
+            if _is_interactive_terminal():
+                _open_browser_later(url)
             serve_webui(repo_root=_repo_root(), bind=str(args.web_bind), port=int(args.web_port), dry_run=bool(args.dry_run))
             return 0
         if _require_config(args.config) is None:
@@ -254,6 +274,17 @@ def main(argv: list[str] | None = None) -> int:
             return 1
         from ..web.server import serve_webui
 
+        url = f"http://{args.bind}:{int(args.port)}/"
+        sys.stderr.write(f"WebUI listening on {url} (Ctrl+C to stop)\n")
+        open_browser = None
+        if bool(getattr(args, "open_browser", False)):
+            open_browser = True
+        elif bool(getattr(args, "no_open_browser", False)):
+            open_browser = False
+        else:
+            open_browser = _is_interactive_terminal()
+        if open_browser:
+            _open_browser_later(url)
         serve_webui(repo_root=_repo_root(), bind=str(args.bind), port=int(args.port), dry_run=bool(args.dry_run))
         return 0
     if cmd == "knowledge-api":

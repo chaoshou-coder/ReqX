@@ -138,6 +138,7 @@ python -m agents
 
 WebUI（本机）：
 - `reqx web --config llm.yaml --bind 127.0.0.1 --port 8788`
+- 该命令会启动本机 Web 服务器并占用终端；交互式终端下会尝试自动打开浏览器；停止服务按 `Ctrl+C`。
 - 写入类接口（chat/send、config/prompt write）默认要求 `Authorization: Bearer $REQX_WEB_TOKEN`；config/prompt read 返回内容会做脱敏处理。
 
 **对话示例：**
