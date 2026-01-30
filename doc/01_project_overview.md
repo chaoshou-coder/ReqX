@@ -27,13 +27,13 @@
 flowchart TD
   U[用户] -->|输入/命令| CLI[CLI 交互层<br/>agents/cli.py]
   CLI -->|规约生成| Tool[需求挖掘技能<br/>RequirementExcavationSkill]
-  Tool -->|invoke| LLMF[LLM 工厂<br/>agents/llm_factory.py]
+  Tool -->|invoke| LLMF[LLM 工厂<br/>agents/core/llm_factory.py]
   LLMF --> API[外部模型 API<br/>OpenAI/Azure/Claude/Gemini/兼容接口]
 
   CLI --> KS[项目知识存储<br/>KnowledgeStore]
   CLI --> TS[逐字稿存储<br/>TranscriptStore]
-  KS -->|YAML| Disk1[(knowledge file)]
-  TS -->|YAML| Disk2[(transcript file)]
+  KS -->|SQLite/YAML| Disk1[(knowledge file)]
+  TS -->|SQLite/YAML| Disk2[(transcript file)]
 ```
 
 ### 3.2 模块详解
@@ -41,18 +41,22 @@ flowchart TD
 #### 1. 交互层 (Interaction Layer)
 *   **入口**: `agents/cli.py`
 *   **职责**: 提供终端聊天界面，处理用户指令（`/spec`, `/done`），管理会话状态。
+*   **核心机制**: **无感知识提取**。
+    *   LLM 在回复时会根据 Prompt 指令，将关键信息封装在 `<KNOWLEDGE>{"append": [...]}</KNOWLEDGE>` 标签中。
+    *   CLI 层会自动拦截并解析该标签，将数据存入知识库，同时剥离标签，仅向用户展示自然语言回复，实现“边聊边记”的流畅体验。
 
 #### 2. 智能层 (Intelligence Layer)
-*   **核心**: `agents/requirement_excavation_skill.py`
+*   **核心**: `agents/core/requirement_excavation_skill.py`
 *   **职责**:
-    *   **Prompt Engineering**: 构造提示词引导 LLM 进行需求挖掘。
-    *   **Schema 校验**: 强制 LLM 输出 JSON 并校验字段完整性，转换为 YAML 规约。
+    *   **Prompt Engineering**: 构造包含版本号（如 `_PROMPT_VERSION = "2026-01-30"`）的复杂 Prompt。
+    *   **Schema 校验**: 强制 LLM 输出 JSON 并校验字段完整性。对 `demand_id` 等关键字段具备自动修正能力（如缺失时重置为 `auto_generated`），确保数据质量。
 
 #### 3. 基础设施层 (Infrastructure Layer)
-*   **LLM 工厂 (`agents/llm_factory.py`)**: 统一不同 LLM Provider 接口，实现配置读取与密钥脱敏。
-*   **存储模块**:
-    *   `KnowledgeStore`: 持久化项目知识与规约。
-    *   `TranscriptStore`: 持久化完整对话记录。
+*   **LLM 工厂 (`agents/core/llm_factory.py`)**: 统一不同 LLM Provider 接口，实现配置读取与密钥脱敏。
+*   **存储模块 (Dual Backend)**:
+    *   **架构**: 支持 SQLite 与 YAML 双后端。
+    *   **可靠性**: YAML 写入采用原子操作（先写 `.tmp` 再 `os.replace`），防止断电导致文件损坏。
+    *   **可扩展性**: 数据结构包含 `schema_version` 字段，为未来的数据迁移预留了能力。
 
 ## 4. 关键特性
 

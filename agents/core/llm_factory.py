@@ -460,7 +460,7 @@ def get_llm(*, config_path: str | os.PathLike[str] | None = None, strict: bool =
 
     if provider == "openai_compatible":
         if not cfg.base_url:
-            raise RuntimeError("provider=openai_compatible 需要 base_url（请在 llm.yaml 配置或运行 letsgo.py）")
+            raise RuntimeError("provider=openai_compatible 需要 base_url（请在 llm.yaml 配置或使用 reqx init-config/wizard）")
         api_key = os.getenv(cfg.api_key_env)
         if not api_key:
             raise RuntimeError(f"缺少 OpenAI API Key（环境变量 {_redact_if_suspicious(cfg.api_key_env)} 未设置）")

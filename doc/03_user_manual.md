@@ -17,10 +17,10 @@
     打开终端（Terminal），进入项目根目录，运行以下命令来安装项目所需的依赖包：
     ```powershell
     # Windows 用户
-    python letsgo.py --install
+    reqx install
     
     # Mac/Linux 用户
-    python3 letsgo.py --install
+    reqx install
     ```
     *注：这个命令会以“可编辑模式”安装本项目，同时会自动下载 `crewai`, `langchain`, `httpx` 等必要的第三方库。*
 
@@ -31,7 +31,7 @@
 ### 2.1 初始化配置文件
 在终端运行：
 ```powershell
-python letsgo.py --init-config
+reqx init-config
 ```
 这会提示你输入要生成的配置文件路径（也可用 `--config-out` 直接指定），并从 `llm.yaml.example` 复制生成。
 
@@ -79,7 +79,7 @@ DEEPSEEK_API_KEY=YOUR_DEEPSEEK_API_KEY
 ### 2.4 验证配置
 配置完成后，运行以下命令进行体检：
 ```powershell
-python letsgo.py --check-api
+reqx check-api --config llm.yaml
 ```
 如果你看到类似下面的输出，说明一切就绪：
 ```yaml
@@ -180,7 +180,48 @@ Invoke-RestMethod -Uri "http://127.0.0.1:8787/v1/knowledge/read"
 *   项目知识文件：启动时你选择或通过参数 `--knowledge` 指定的路径（默认提示为当前目录的 `project_knowledge.yaml`）。
 *   逐字稿文件：启动时你选择输出目录或通过参数 `--transcript/--transcript-dir` 指定的路径；若 `--transcript` 指向已存在文件，默认新会话会清空旧记录，使用 `--resume-transcript` 才会继续追加。
 
-## 4. 常见问题 (FAQ)
+## 4. 高级功能与配置
+
+### 4.1 高级环境变量
+除了基础的 `.env` 配置，你还可以通过设置以下环境变量来微调系统行为：
+
+| 变量名 | 默认值 | 说明 |
+| :--- | :--- | :--- |
+| `LLM_HTTP_TIMEOUT_S` | `180` | LLM 请求超时时间（秒）。如果你的模型响应很慢，请调大此值。 |
+| `LLM_CONFIG_PATH` | `llm.yaml` | 强制指定配置文件路径。 |
+| `REQX_WEB_TOKEN` | - | 启用 Web UI 的访问鉴权 Token。 |
+| `REQX_DEBUG_RAW_OUTPUT` | `0` | 设为 `1` 可在报错时显示原始模型输出（包含未脱敏内容，仅用于本地调试）。 |
+
+### 4.2 配置文件高级选项 (`llm.yaml`)
+```yaml
+input_char_limit: 8000   # 限制输入上下文长度，防止 Token 溢出
+output_char_limit: 20000 # 限制模型输出长度
+azure_api_key_env: MY_AZURE_KEY # 自定义 Azure Key 的环境变量名
+```
+
+### 4.3 Web API 接入
+你可以启动 Web 服务，让其他程序通过 HTTP 调用本系统的能力。
+
+**启动服务**：
+```bash
+python -m agents.web.server --port 8000
+```
+
+**接口调用示例 (Python)**：
+```python
+import requests
+
+url = "http://localhost:8000/v1/chat/send"
+headers = {"Authorization": "Bearer YOUR_TOKEN"} # 如果配置了 REQX_WEB_TOKEN
+data = {
+    "message": "我想做一个商城",
+    "dry_run": False
+}
+response = requests.post(url, json=data, headers=headers)
+print(response.json())
+```
+
+## 5. 常见问题 (FAQ)
 
 **Q: 运行 `check-api` 报错 "Connection error"？**
 A: 请检查：
@@ -192,7 +233,7 @@ A: 请检查：
 A: 可能是因为使用的模型较弱（如 gpt-3.5 或某些小参数模型），无法很好地遵循复杂的指令。建议使用 GPT-4o, Claude 3.5 Sonnet 或 DeepSeek V3 等强力模型。
 
 **Q: 如何清空所有历史数据重新开始？**
-A: 运行 `python letsgo.py --clean`，然后手动删除你实际使用的项目知识文件（`--knowledge` 指定的路径）以及逐字稿输出目录即可。
+A: 运行 `reqx clean`，然后手动删除你实际使用的项目知识文件（`--knowledge` 指定的路径）以及逐字稿输出目录即可。
 
 ---
 *祝你开发愉快！如有 Bug，欢迎提交 Issue。*

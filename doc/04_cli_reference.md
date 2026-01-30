@@ -109,29 +109,7 @@ reqx knowledge-api --knowledge path/to/project_knowledge.db --port 8787
 | `--token-env NAME` | 从环境变量读取 Bearer token（默认 `REQX_KNOWLEDGE_API_TOKEN`） |
 | `--token TEXT` | 直接指定 Bearer token（优先于 env） |
 
-## 2. 项目管理脚本：letsgo.py
-
-### 2.1 获取帮助
-
-`letsgo.py` 已合并到 `reqx`，该脚本仅作为兼容转发壳保留。推荐使用：
-
-```bash
-reqx --help
-```
-
-### 2.2 参数一览
-
-| 参数 | 作用 | 典型场景 |
-|:---|:---|:---|
-| `--install` | 等价于 `reqx install` | 本地开发环境初始化 |
-| `--init-config` | 等价于 `reqx init-config` | 新项目初始化 |
-| `--config-out PATH` | 用于 `--init-config`：指定输出路径 | CI/脚本化生成配置 |
-| `--check-api` | 等价于 `reqx check-api` | 网络/Key/模型配置排障 |
-| `--config PATH` | 用于 `--check-api`：指定配置文件路径 | CI/非交互环境必填 |
-| `--clean` | 等价于 `reqx clean` | 发布/打包前清理 |
-| `--check-deps` | 等价于 `reqx check-deps` | 新手自检 |
-
-## 3. 清理脚本：clean_repo.py
+## 2. 清理脚本：clean_repo.py
 
 ### 3.1 获取帮助
 
@@ -147,7 +125,7 @@ python clean_repo.py --help
 | `--dry-run` | 只列出将删除的路径，不执行删除 | CI 预检查 |
 | `--json` | 输出 JSON（便于 CI 解析） | CI 统计/日志采集 |
 
-## 4. Demo 脚本：run_agent.py
+## 3. Demo 脚本：run_agent.py
 
 ### 4.1 获取帮助
 
@@ -167,7 +145,7 @@ python run_agent.py --help
 | `--connectivity-timeout-s S` | 连通性测试超时秒数 | 慢网络/代理环境 |
 | `--no-openai-key-map` | 不将 cfg.api_key_env 映射到 `OPENAI_API_KEY` | 环境隔离/自定义 key 管理 |
 
-## 5. 环境变量（可选）
+## 4. 环境变量（可选）
 
 | 环境变量 | 作用 | 典型场景 |
 |:---|:---|:---|

@@ -13,6 +13,8 @@ transcripts/
 .vscode/
 .idea/
 *.broken.*.bak
+report*.md
+all_in_one_copy*.py
 __pycache__/
 *.pyc
 *.pyo

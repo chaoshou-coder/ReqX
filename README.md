@@ -24,6 +24,7 @@
 *   **知识沉淀**: 自动提取关键决策点并持久化，支持断点续聊。
 *   **多模型支持**: 适配 OpenAI, Azure, Claude, Gemini 及所有 OpenAI 兼容接口。
 *   **安全合规**: 密钥环境变量管理，日志自动脱敏。
+*   **扩展性**: 内置 Web API (`/v1/chat/send`) 与配置诊断接口，支持 SQLite/YAML 双存储后端。
 
 ---
 
@@ -44,7 +45,7 @@
 flowchart TD
   U[用户] -->|输入/命令| CLI[CLI 交互层<br/>agents/cli.py]
   CLI -->|规约生成| Tool[需求挖掘技能<br/>RequirementExcavationSkill]
-  Tool -->|invoke| LLMF[LLM 工厂<br/>agents/llm_factory.py]
+  Tool -->|invoke| LLMF[LLM 工厂<br/>agents/core/llm_factory.py]
   LLMF --> API[外部模型 API<br/>OpenAI/Azure/Claude/Gemini/兼容接口]
 
   CLI --> KS[项目知识存储<br/>KnowledgeStore]
@@ -179,11 +180,14 @@ api_key_env: ANTHROPIC_API_KEY
 
 ## 🛠️ 开发者工具
 
-项目根目录的 `letsgo.py` 提供了多种实用功能：
+推荐使用 `reqx` 的子命令：
 
-*   `python letsgo.py --check-api`：**健康检查**。测试 LLM 连接是否正常。
-*   `python letsgo.py --clean`：**一键清理**。删除缓存与构建产物。
-*   `python letsgo.py --check-deps`：**依赖检查**。确认环境是否完整。
+*   `reqx check-api --config llm.yaml`：健康检查（测试 LLM 连接是否正常）。
+*   `reqx clean`：一键清理（删除缓存与构建产物）。
+*   `reqx check-deps`：依赖检查（确认环境是否完整）。
+*   `reqx install`：安装本仓库（可编辑模式）。
+*   `reqx init-config`：生成配置文件。
+*   `reqx wizard`：一键配置向导（生成配置/写入 env/健康检查）。
 
 ---
 

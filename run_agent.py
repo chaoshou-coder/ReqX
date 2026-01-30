@@ -11,7 +11,7 @@ from crewai import Agent, Crew, LLM, Task
 import httpx
 
 from agents import RequirementExcavationSkill, get_llm
-from agents.llm_factory import load_llm_config, redact_secrets
+from agents.core.llm_factory import load_llm_config, redact_secrets
 
 
 def _timeout_seconds() -> float:
