@@ -31,35 +31,247 @@ _INDEX_HTML = """<!doctype html>
 <html lang="zh-CN">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>ReqX WebUI</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>ReqX Studio</title>
     <style>
-      :root { color-scheme: light dark; }
-      body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial; margin: 0; }
-      .wrap { display: grid; grid-template-columns: 360px 1fr; height: 100vh; }
-      .side { border-right: 1px solid rgba(127,127,127,.25); padding: 12px; overflow: auto; }
-      .main { padding: 12px; overflow: auto; }
-      .row { display: grid; gap: 8px; margin-bottom: 10px; }
-      label { font-size: 12px; opacity: 0.85; }
-      input, textarea, button { width: 100%; box-sizing: border-box; padding: 8px; border-radius: 6px; border: 1px solid rgba(127,127,127,.35); background: transparent; color: inherit; }
-      textarea { min-height: 120px; resize: vertical; font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-      .btnrow { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-      .tabs { display: flex; gap: 8px; margin-bottom: 10px; }
-      .tab { padding: 8px 10px; border-radius: 999px; border: 1px solid rgba(127,127,127,.35); background: transparent; cursor: pointer; }
-      .tab[aria-selected="true"] { background: rgba(127,127,127,.15); }
-      .card { border: 1px solid rgba(127,127,127,.25); border-radius: 10px; padding: 10px; margin-bottom: 12px; }
-      .chat { display: grid; gap: 10px; }
-      .msg { border: 1px solid rgba(127,127,127,.25); border-radius: 10px; padding: 10px; }
-      .meta { font-size: 12px; opacity: .7; margin-bottom: 6px; }
-      pre { overflow: auto; padding: 10px; border-radius: 8px; border: 1px solid rgba(127,127,127,.25); }
-      code { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
-      .danger { color: #b00020; }
-      .ok { color: #0a7a0a; }
+      :root {
+        --bg-body: #f5f5f7;
+        --bg-sidebar: #ffffff;
+        --bg-card: #ffffff;
+        --text-primary: #1d1d1f;
+        --text-secondary: #86868b;
+        --accent-color: #0071e3;
+        --accent-hover: #0077ed;
+        --border-color: #d2d2d7;
+        --input-bg: #e8e8ed;
+        --radius-l: 20px;
+        --radius-m: 14px;
+        --radius-s: 8px;
+        --shadow-sm: 0 1px 2px rgba(0,0,0,0.04);
+        --shadow-md: 0 4px 16px rgba(0,0,0,0.06);
+        --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+        --font-mono: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg-body: #000000;
+          --bg-sidebar: #1c1c1e;
+          --bg-card: #1c1c1e;
+          --text-primary: #f5f5f7;
+          --text-secondary: #98989d;
+          --accent-color: #0a84ff;
+          --accent-hover: #0077ed;
+          --border-color: #38383a;
+          --input-bg: #2c2c2e;
+          --shadow-sm: 0 1px 2px rgba(0,0,0,0.2);
+          --shadow-md: 0 4px 16px rgba(0,0,0,0.3);
+        }
+      }
+
+      body {
+        font-family: var(--font-sans);
+        margin: 0;
+        background: var(--bg-body);
+        color: var(--text-primary);
+        line-height: 1.5;
+        height: 100vh;
+        overflow: hidden;
+        -webkit-font-smoothing: antialiased;
+      }
+
+      /* Layout */
+      .wrap { display: grid; grid-template-columns: 320px 1fr; height: 100%; }
+      .side {
+        background: var(--bg-sidebar);
+        border-right: 1px solid var(--border-color);
+        padding: 24px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        overflow-y: auto;
+        backdrop-filter: blur(20px);
+      }
+      .main {
+        padding: 40px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+      }
+      .content-width {
+        width: 100%;
+        max-width: 800px;
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+      }
+
+      /* Typography */
+      h1, h2, h3 { margin: 0 0 10px; font-weight: 600; color: var(--text-primary); }
+      label {
+        display: block;
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-secondary);
+        margin-bottom: 8px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+      }
+
+      /* Components */
+      input, textarea, select {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 12px 16px;
+        border-radius: var(--radius-m);
+        border: none;
+        background: var(--input-bg);
+        color: var(--text-primary);
+        font-size: 14px;
+        font-family: inherit;
+        outline: none;
+        transition: box-shadow 0.2s;
+      }
+      input:focus, textarea:focus {
+        box-shadow: 0 0 0 2px var(--accent-color);
+      }
+      textarea {
+        min-height: 120px;
+        resize: vertical;
+        font-family: var(--font-mono);
+        line-height: 1.6;
+      }
+
+      button {
+        border: none;
+        background: var(--input-bg);
+        color: var(--text-primary);
+        padding: 10px 18px;
+        border-radius: 99px;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+      }
+      button:hover { filter: brightness(0.95); transform: translateY(-1px); }
+      button:active { transform: scale(0.98); }
+      
+      button.primary {
+        background: var(--accent-color);
+        color: #fff;
+      }
+      button.primary:hover { background: var(--accent-hover); }
+
+      /* Tabs (Segmented Control) */
+      .tabs {
+        display: flex;
+        background: var(--input-bg);
+        padding: 3px;
+        border-radius: 12px;
+      }
+      .tab {
+        flex: 1;
+        text-align: center;
+        padding: 6px;
+        border-radius: 9px;
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: 12px;
+        font-weight: 500;
+        box-shadow: none;
+      }
+      .tab[aria-selected="true"] {
+        background: var(--bg-card);
+        color: var(--text-primary);
+        box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+      }
+
+      /* Panels */
+      section { display: flex; flex-direction: column; gap: 16px; }
+      .row { display: flex; flex-direction: column; }
+      .btnrow { display: flex; gap: 10px; }
+      .btnrow button { flex: 1; }
+
+      /* Card */
+      .card {
+        background: var(--bg-card);
+        border-radius: var(--radius-l);
+        padding: 24px;
+        box-shadow: var(--shadow-md);
+      }
+
+      /* Chat */
+      .chat-container {
+        display: flex;
+        flex-direction: column;
+        gap: 24px;
+        padding-bottom: 40px;
+        width: 100%;
+      }
+      .msg {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        max-width: 85%;
+        animation: fadeIn 0.3s ease;
+      }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      
+      .msg[data-role="user"] { align-self: flex-end; align-items: flex-end; }
+      .msg[data-role="assistant"] { align-self: flex-start; align-items: flex-start; }
+
+      .msg-meta { font-size: 11px; color: var(--text-secondary); margin: 0 8px; }
+      
+      .msg-body {
+        padding: 14px 20px;
+        border-radius: 20px;
+        font-size: 15px;
+        line-height: 1.6;
+        box-shadow: var(--shadow-sm);
+        word-wrap: break-word;
+      }
+      .msg[data-role="user"] .msg-body {
+        background: var(--accent-color);
+        color: #fff;
+        border-bottom-right-radius: 4px;
+      }
+      .msg[data-role="assistant"] .msg-body {
+        background: var(--bg-card);
+        color: var(--text-primary);
+        border-bottom-left-radius: 4px;
+      }
+
+      /* Markdown & Code */
+      .msg-body pre {
+        background: rgba(0,0,0,0.05);
+        padding: 12px;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin: 10px 0;
+      }
+      .msg[data-role="user"] .msg-body pre { background: rgba(255,255,255,0.15); }
+      .msg-body code { font-family: var(--font-mono); font-size: 0.9em; }
+      .msg-body p { margin: 0 0 10px; }
+      .msg-body p:last-child { margin: 0; }
+      .msg-body ul, .msg-body ol { margin: 8px 0; padding-left: 20px; }
+
+      /* Status */
+      #status { margin-top: 12px; font-size: 12px; color: var(--text-secondary); text-align: center; min-height: 1.5em; }
+      .danger { color: #ff3b30; }
+      .ok { color: #34c759; }
+
+      /* Checkbox */
+      .checkbox-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+      .checkbox-row input { width: auto; margin: 0; }
+      .checkbox-row span { font-size: 13px; color: var(--text-primary); }
     </style>
   </head>
   <body>
     <div class="wrap">
       <aside class="side">
+        <div style="padding: 0 4px; margin-bottom: 8px;">
+          <h2 style="font-size:18px; margin:0;">ReqX Studio</h2>
+        </div>
         <div class="tabs">
           <button class="tab" id="tab-chat" aria-selected="true">对话</button>
           <button class="tab" id="tab-knowledge" aria-selected="false">知识库</button>
@@ -69,76 +281,81 @@ _INDEX_HTML = """<!doctype html>
 
         <section id="panel-chat">
           <div class="row">
-            <label>鉴权 Token（可选；与环境变量 REQX_WEB_TOKEN 对应）</label>
-            <input id="authToken" placeholder="留空表示不发送 Authorization" />
+            <label>鉴权 Token</label>
+            <input id="authToken" type="password" placeholder="未设置 (可选)" />
           </div>
           <div class="row">
-            <label>LLM 配置文件路径</label>
-            <input id="cfgPath" placeholder="例如：llm.yaml" />
+            <label>LLM 配置</label>
+            <input id="cfgPath" placeholder="llm.yaml" />
           </div>
           <div class="row">
-            <label>项目知识文件路径</label>
-            <input id="knowledgePath" placeholder="例如：project_knowledge.db" />
+            <label>知识库路径</label>
+            <input id="knowledgePath" placeholder="project_knowledge.db" />
           </div>
+          <label class="checkbox-row">
+            <input type="checkbox" id="dryRun" />
+            <span>Dry Run (不落盘)</span>
+          </label>
           <div class="row">
-            <label><input type="checkbox" id="dryRun" /> dry-run（只演练不落盘）</label>
-          </div>
-          <div class="row">
-            <label>导入上下文（可选）</label>
-            <textarea id="importedContext" placeholder="粘贴历史对话/背景材料（可选）"></textarea>
+            <label>导入上下文</label>
+            <textarea id="importedContext" placeholder="粘贴历史对话或背景材料..." style="height:80px"></textarea>
           </div>
           <div class="btnrow">
-            <button id="btnReset">清空本页对话</button>
-            <button id="btnRefreshKnowledge">刷新知识库快照</button>
+            <button id="btnReset">清空对话</button>
+            <button id="btnRefreshKnowledge">刷新知识</button>
           </div>
         </section>
 
         <section id="panel-knowledge" style="display:none">
           <div class="row">
-            <label>知识库快照（只读）</label>
-            <textarea id="knowledgeSnapshot" readonly></textarea>
+            <label>知识库快照 (Read Only)</label>
+            <textarea id="knowledgeSnapshot" readonly style="height:300px; font-family:var(--font-mono); font-size:12px;"></textarea>
           </div>
-          <button id="btnLoadKnowledge">读取</button>
+          <button id="btnLoadKnowledge">重新读取</button>
         </section>
 
         <section id="panel-config" style="display:none">
           <div class="row">
-            <label>配置文件内容（YAML）</label>
-            <textarea id="cfgContent"></textarea>
+            <label>配置内容 (YAML)</label>
+            <textarea id="cfgContent" style="height:300px"></textarea>
           </div>
           <div class="btnrow">
             <button id="btnLoadCfg">读取</button>
-            <button id="btnSaveCfg">保存</button>
+            <button id="btnSaveCfg" class="primary">保存</button>
           </div>
-          <button id="btnDoctor">Doctor（解析并输出摘要）</button>
+          <hr style="border:0; border-top:1px solid var(--border-color); width:100%; margin:10px 0;">
+          <button id="btnDoctor">运行 Doctor 检查</button>
           <div class="row">
-            <label>Doctor 输出</label>
-            <textarea id="doctorOut" readonly></textarea>
+            <label>Doctor 报告</label>
+            <textarea id="doctorOut" readonly style="height:120px; font-family:var(--font-mono); font-size:12px;"></textarea>
           </div>
         </section>
 
         <section id="panel-prompt" style="display:none">
           <div class="row">
-            <label>全局提示词（global_prompt.txt）</label>
-            <textarea id="promptContent"></textarea>
+            <label>Global Prompt</label>
+            <textarea id="promptContent" style="height:400px"></textarea>
           </div>
           <div class="btnrow">
             <button id="btnLoadPrompt">读取</button>
-            <button id="btnSavePrompt">保存</button>
+            <button id="btnSavePrompt" class="primary">保存</button>
           </div>
         </section>
       </aside>
 
       <main class="main">
-        <div class="card">
-          <div class="row">
-            <label>你要对 agent 说什么？</label>
-            <textarea id="userInput" placeholder="输入后按 Ctrl+Enter 发送"></textarea>
+        <div class="content-width">
+          <div class="card">
+            <div class="row">
+              <textarea id="userInput" placeholder="输入需求..." style="border:none; background:transparent; padding:0; min-height:60px; font-size:16px; resize:none;" autofocus></textarea>
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-top:10px; border-top:1px solid rgba(0,0,0,0.05); padding-top:12px;">
+              <div id="status">Ready</div>
+              <button id="btnSend" class="primary" style="padding:8px 24px;">发送</button>
+            </div>
           </div>
-          <button id="btnSend">发送</button>
-          <div id="status" style="margin-top:8px; font-size:12px; opacity:.85"></div>
+          <div class="chat-container" id="chat"></div>
         </div>
-        <div class="chat" id="chat"></div>
       </main>
     </div>
     <script src="/app.js"></script>
@@ -207,16 +424,23 @@ _APP_JS = r"""(() => {
     for (const msg of state.messages) {
       const div = document.createElement("div");
       div.className = "msg";
+      div.setAttribute("data-role", msg.role);
+      
       const meta = document.createElement("div");
-      meta.className = "meta";
-      meta.textContent = msg.role === "user" ? "用户" : "助手";
+      meta.className = "msg-meta";
+      meta.textContent = msg.role === "user" ? "You" : "ReqX";
       div.appendChild(meta);
+      
       const body = document.createElement("div");
+      body.className = "msg-body";
       const esc = (s) => (s ?? "").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
-      body.innerHTML = msg.role === "assistant" ? renderMarkdown(msg.content) : `<pre>${esc(msg.content)}</pre>`;
+      body.innerHTML = msg.role === "assistant" ? renderMarkdown(msg.content) : `<p>${esc(msg.content).replace(/\n/g, "<br>")}</p>`;
       div.appendChild(body);
+      
       root.appendChild(div);
     }
+    // Scroll to bottom
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
   }
 
   async function apiJson(method, path, body) {
@@ -236,12 +460,12 @@ _APP_JS = r"""(() => {
     const kp = $("knowledgePath").value.trim();
     const r = await apiJson("POST", "/v1/knowledge/read", {knowledge_path: kp || null});
     if (!r.ok) {
-      setStatus(`读取知识库失败：${r.error?.code || "unknown"}`, false);
+      setStatus(`Read Failed: ${r.error?.code || "unknown"}`, false);
       return;
     }
     state.knowledgeSnapshot = r.result;
     $("knowledgeSnapshot").value = JSON.stringify(r.result, null, 2);
-    setStatus("知识库已刷新");
+    setStatus("Knowledge refreshed");
   }
 
   async function send() {
@@ -251,7 +475,7 @@ _APP_JS = r"""(() => {
     $("userInput").value = "";
     state.messages.push({role: "user", content: text});
     renderChat();
-    setStatus("调用模型中…");
+    setStatus("Thinking...");
 
     const payload = {
       config_path: $("cfgPath").value.trim() || null,
@@ -262,17 +486,17 @@ _APP_JS = r"""(() => {
     };
     const r = await apiJson("POST", "/v1/chat/send", payload);
     if (!r.ok) {
-      setStatus(`失败：${r.error?.code || "unknown"} ${r.error?.message || ""}`.trim(), false);
+      setStatus(`Error: ${r.error?.code || "unknown"} ${r.error?.message || ""}`.trim(), false);
       return;
     }
     state.messages.push({role: "assistant", content: r.result.reply});
     renderChat();
     if (r.result.knowledge_appended > 0) {
       await refreshKnowledge();
-      setStatus(`完成（已追加知识 ${r.result.knowledge_appended} 条）`);
+      setStatus(`Done (Learned ${r.result.knowledge_appended} items)`);
       return;
     }
-    setStatus("完成");
+    setStatus("Ready");
   }
 
   async function loadCfg() {
@@ -280,11 +504,11 @@ _APP_JS = r"""(() => {
     const p = $("cfgPath").value.trim();
     const r = await apiJson("POST", "/v1/config/read", {path: p || null});
     if (!r.ok) {
-      setStatus(`读取配置失败：${r.error?.code || "unknown"}`, false);
+      setStatus(`Load Config Failed: ${r.error?.code || "unknown"}`, false);
       return;
     }
     $("cfgContent").value = r.result.content || "";
-    setStatus("配置已读取");
+    setStatus("Config loaded");
   }
 
   async function saveCfg() {
@@ -292,10 +516,10 @@ _APP_JS = r"""(() => {
     const p = $("cfgPath").value.trim();
     const r = await apiJson("POST", "/v1/config/write", {path: p || null, content: $("cfgContent").value || "", dry_run: $("dryRun").checked});
     if (!r.ok) {
-      setStatus(`保存配置失败：${r.error?.code || "unknown"}`, false);
+      setStatus(`Save Config Failed: ${r.error?.code || "unknown"}`, false);
       return;
     }
-    setStatus(r.result?.dry_run ? "dry-run：未落盘" : "配置已保存");
+    setStatus(r.result?.dry_run ? "Dry Run: Not saved" : "Config saved");
   }
 
   async function doctor() {
@@ -303,31 +527,31 @@ _APP_JS = r"""(() => {
     const p = $("cfgPath").value.trim();
     const r = await apiJson("POST", "/v1/config/doctor", {path: p || null});
     if (!r.ok) {
-      setStatus(`Doctor失败：${r.error?.code || "unknown"}`, false);
+      setStatus(`Doctor Failed: ${r.error?.code || "unknown"}`, false);
       $("doctorOut").value = "";
       return;
     }
     $("doctorOut").value = JSON.stringify(r.result, null, 2);
-    setStatus("Doctor完成");
+    setStatus("Doctor passed");
   }
 
   async function loadPrompt() {
     const r = await apiJson("POST", "/v1/prompt/read", {});
     if (!r.ok) {
-      setStatus(`读取提示词失败：${r.error?.code || "unknown"}`, false);
+      setStatus(`Load Prompt Failed: ${r.error?.code || "unknown"}`, false);
       return;
     }
     $("promptContent").value = r.result.content || "";
-    setStatus("提示词已读取");
+    setStatus("Prompt loaded");
   }
 
   async function savePrompt() {
     const r = await apiJson("POST", "/v1/prompt/write", {content: $("promptContent").value || "", dry_run: $("dryRun").checked});
     if (!r.ok) {
-      setStatus(`保存提示词失败：${r.error?.code || "unknown"}`, false);
+      setStatus(`Save Prompt Failed: ${r.error?.code || "unknown"}`, false);
       return;
     }
-    setStatus(r.result?.dry_run ? "dry-run：未落盘" : "提示词已保存");
+    setStatus(r.result?.dry_run ? "Dry Run: Not saved" : "Prompt saved");
   }
 
   function tab(name) {
@@ -339,7 +563,7 @@ _APP_JS = r"""(() => {
   }
 
   $("btnSend").addEventListener("click", send);
-  $("btnReset").addEventListener("click", () => { state.messages = []; renderChat(); setStatus("已清空"); });
+  $("btnReset").addEventListener("click", () => { state.messages = []; renderChat(); setStatus("Chat cleared"); });
   $("btnRefreshKnowledge").addEventListener("click", refreshKnowledge);
   $("btnLoadKnowledge").addEventListener("click", refreshKnowledge);
   $("btnLoadCfg").addEventListener("click", loadCfg);
